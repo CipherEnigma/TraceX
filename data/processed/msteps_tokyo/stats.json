@@ -1,0 +1,270 @@
+{
+  "dataset": "msteps_tokyo",
+  "description": "Massive-STEPS Tokyo (Wongso et al.), Semantic Trails 2017-18, with venue names",
+  "filters": {
+    "min_poi_checkins": 1,
+    "min_user_checkins": 5
+  },
+  "raw_rows": 13839,
+  "pipeline_log": [
+    {
+      "step": "drop_missing_required_fields",
+      "rows_before": 13839,
+      "rows_after": 13839,
+      "removed": 0,
+      "fields": [
+        "user_raw",
+        "venue_raw",
+        "category",
+        "local_time"
+      ]
+    },
+    {
+      "step": "drop_invalid_or_missing_coordinates",
+      "rows_before": 13839,
+      "rows_after": 13441,
+      "removed": 398
+    },
+    {
+      "step": "drop_duplicate_checkins(user,venue,time)",
+      "rows_before": 13441,
+      "rows_after": 13441,
+      "removed": 0
+    },
+    {
+      "step": "drop_pois_with_<1_checkins",
+      "rows_before": 13441,
+      "rows_after": 13441,
+      "removed": 0
+    },
+    {
+      "step": "drop_users_with_<5_checkins",
+      "rows_before": 13441,
+      "rows_after": 13437,
+      "removed": 4
+    },
+    {
+      "step": "assign_chronological_split",
+      "rows_before": 13437,
+      "rows_after": 13437,
+      "removed": 0,
+      "train_end": "2018-05-29 17:57:00",
+      "val_end": "2018-07-23 14:33:00"
+    },
+    {
+      "step": "drop_train_trajectories_shorter_than_2",
+      "rows_before": 13437,
+      "rows_after": 13137,
+      "removed": 300
+    },
+    {
+      "step": "drop_eval_checkins_with_user_or_poi_unseen_in_train",
+      "rows_before": 13137,
+      "rows_after": 12375,
+      "removed": 762
+    },
+    {
+      "step": "drop_eval_trajectories_shorter_than_2",
+      "rows_before": 12375,
+      "rows_after": 12184,
+      "removed": 191
+    }
+  ],
+  "split_cutoffs": {
+    "train_before": "2018-05-29 17:57:00",
+    "val_before": "2018-07-23 14:33:00"
+  },
+  "overall": {
+    "users": 719,
+    "pois": 2517,
+    "categories": 275,
+    "checkins": 12184,
+    "trajectories": 4416,
+    "time_span": [
+      "2017-10-03 23:55:00",
+      "2018-10-20 03:26:00"
+    ],
+    "checkins_per_user": {
+      "mean": 16.95,
+      "median": 10.0,
+      "min": 2,
+      "max": 314,
+      "p90": 34.0
+    },
+    "trajectories_per_user": {
+      "mean": 6.14,
+      "median": 4.0,
+      "min": 1,
+      "max": 61,
+      "p90": 12.0
+    },
+    "trajectory_length": {
+      "mean": 2.76,
+      "median": 2.0,
+      "min": 2,
+      "max": 27,
+      "p90": 4.0
+    }
+  },
+  "per_split": {
+    "train": {
+      "checkins": 10448,
+      "trajectories": 3715,
+      "users": 719,
+      "pois": 2517
+    },
+    "val": {
+      "checkins": 887,
+      "trajectories": 367,
+      "users": 183,
+      "pois": 394
+    },
+    "test": {
+      "checkins": 849,
+      "trajectories": 334,
+      "users": 182,
+      "pois": 357
+    }
+  },
+  "poi_coverage": {
+    "pois_in_train": 2517,
+    "train_checkins_per_poi": {
+      "mean": 4.15,
+      "median": 1.0,
+      "min": 1,
+      "max": 637,
+      "p90": 7.0
+    },
+    "share_of_train_checkins_on_top_1pct_pois": 0.2642,
+    "share_of_pois_with_<=5_train_checkins": 0.8764,
+    "test_pois_seen_in_train": 1.0,
+    "test_target_pois_distinct": 196
+  },
+  "instances": {
+    "val": {
+      "n": 367,
+      "revisit_rate": 0.5095,
+      "target_in_history_rate": 0.4986,
+      "target_in_prefix_rate": 0.0817,
+      "new_poi_rate": 0.4905,
+      "prefix_len": {
+        "mean": 1.42,
+        "median": 1.0,
+        "min": 1,
+        "max": 8,
+        "p90": 2.0
+      },
+      "history_trajs": {
+        "mean": 8.68,
+        "median": 5.0,
+        "min": 1,
+        "max": 54,
+        "p90": 20.400000000000034
+      },
+      "history_checkins": {
+        "mean": 26.99,
+        "median": 12.0,
+        "min": 2,
+        "max": 289,
+        "p90": 53.0
+      }
+    },
+    "test": {
+      "n": 334,
+      "revisit_rate": 0.4731,
+      "target_in_history_rate": 0.4491,
+      "target_in_prefix_rate": 0.0988,
+      "new_poi_rate": 0.5269,
+      "prefix_len": {
+        "mean": 1.54,
+        "median": 1.0,
+        "min": 1,
+        "max": 12,
+        "p90": 3.0
+      },
+      "history_trajs": {
+        "mean": 7.2,
+        "median": 4.0,
+        "min": 1,
+        "max": 32,
+        "p90": 18.0
+      },
+      "history_checkins": {
+        "mean": 19.42,
+        "median": 10.0,
+        "min": 2,
+        "max": 90,
+        "p90": 44.39999999999998
+      }
+    },
+    "sample_test_500": {
+      "n": 334,
+      "revisit_rate": 0.4731,
+      "target_in_history_rate": 0.4491,
+      "target_in_prefix_rate": 0.0988,
+      "new_poi_rate": 0.5269,
+      "prefix_len": {
+        "mean": 1.54,
+        "median": 1.0,
+        "min": 1,
+        "max": 12,
+        "p90": 3.0
+      },
+      "history_trajs": {
+        "mean": 7.2,
+        "median": 4.0,
+        "min": 1,
+        "max": 32,
+        "p90": 18.0
+      },
+      "history_checkins": {
+        "mean": 19.42,
+        "median": 10.0,
+        "min": 2,
+        "max": 90,
+        "p90": 44.39999999999998
+      }
+    },
+    "sample_test_debug20": {
+      "n": 20,
+      "revisit_rate": 0.5,
+      "target_in_history_rate": 0.5,
+      "target_in_prefix_rate": 0.25,
+      "new_poi_rate": 0.5,
+      "prefix_len": {
+        "mean": 2.05,
+        "median": 1.5,
+        "min": 1,
+        "max": 8,
+        "p90": 3.0
+      },
+      "history_trajs": {
+        "mean": 7.9,
+        "median": 4.0,
+        "min": 1,
+        "max": 28,
+        "p90": 28.0
+      },
+      "history_checkins": {
+        "mean": 23.3,
+        "median": 9.5,
+        "min": 2,
+        "max": 90,
+        "p90": 90.0
+      }
+    }
+  },
+  "name_coverage": {
+    "pois_with_name": 1.0,
+    "pois_with_address": 0.9754,
+    "checkins_with_name": 1.0,
+    "test_targets_with_name": 1.0,
+    "distinct_names": 2226,
+    "pois_sharing_a_name_with_another_poi": 0.1518
+  },
+  "sample_fingerprints": {
+    "sample_test_500": "41606cf0f3192dc2",
+    "sample_test_debug20": "c5ceb54076efd283"
+  },
+  "random_seed": 42
+}
