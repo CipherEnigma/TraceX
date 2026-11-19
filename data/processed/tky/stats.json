@@ -1,0 +1,266 @@
+{
+  "dataset": "tky",
+  "description": "Foursquare TKY (Yang et al. 2014), Apr 2012 - Feb 2013",
+  "filters": {
+    "min_poi_checkins": 10,
+    "min_user_checkins": 10
+  },
+  "raw_rows": 573703,
+  "pipeline_log": [
+    {
+      "step": "drop_missing_required_fields",
+      "rows_before": 573703,
+      "rows_after": 573703,
+      "removed": 0,
+      "fields": [
+        "user_raw",
+        "venue_raw",
+        "category",
+        "local_time"
+      ]
+    },
+    {
+      "step": "drop_invalid_or_missing_coordinates",
+      "rows_before": 573703,
+      "rows_after": 573703,
+      "removed": 0
+    },
+    {
+      "step": "drop_duplicate_checkins(user,venue,time)",
+      "rows_before": 573703,
+      "rows_after": 573126,
+      "removed": 577
+    },
+    {
+      "step": "drop_pois_with_<10_checkins",
+      "rows_before": 573126,
+      "rows_after": 447076,
+      "removed": 126050
+    },
+    {
+      "step": "drop_users_with_<10_checkins",
+      "rows_before": 447076,
+      "rows_after": 447076,
+      "removed": 0
+    },
+    {
+      "step": "assign_chronological_split",
+      "rows_before": 447076,
+      "rows_after": 447076,
+      "removed": 0,
+      "train_end": "2012-12-10 22:34:20",
+      "val_end": "2013-01-12 18:58:55"
+    },
+    {
+      "step": "drop_train_trajectories_shorter_than_2",
+      "rows_before": 447076,
+      "rows_after": 415185,
+      "removed": 31891
+    },
+    {
+      "step": "drop_eval_checkins_with_user_or_poi_unseen_in_train",
+      "rows_before": 415185,
+      "rows_after": 413282,
+      "removed": 1903
+    },
+    {
+      "step": "drop_eval_trajectories_shorter_than_2",
+      "rows_before": 413282,
+      "rows_after": 402316,
+      "removed": 10966
+    }
+  ],
+  "split_cutoffs": {
+    "train_before": "2012-12-10 22:34:20",
+    "val_before": "2013-01-12 18:58:55"
+  },
+  "overall": {
+    "users": 2281,
+    "pois": 7829,
+    "categories": 188,
+    "checkins": 402316,
+    "trajectories": 65604,
+    "time_span": [
+      "2012-04-04 04:12:07",
+      "2013-02-16 11:34:32"
+    ],
+    "checkins_per_user": {
+      "mean": 176.38,
+      "median": 110.0,
+      "min": 2,
+      "max": 2808,
+      "p90": 386.0
+    },
+    "trajectories_per_user": {
+      "mean": 28.76,
+      "median": 25.0,
+      "min": 1,
+      "max": 95,
+      "p90": 53.0
+    },
+    "trajectory_length": {
+      "mean": 6.13,
+      "median": 4.0,
+      "min": 2,
+      "max": 238,
+      "p90": 12.0
+    }
+  },
+  "per_split": {
+    "train": {
+      "checkins": 325769,
+      "trajectories": 51583,
+      "users": 2281,
+      "pois": 7829
+    },
+    "val": {
+      "checkins": 38467,
+      "trajectories": 7045,
+      "users": 1747,
+      "pois": 5390
+    },
+    "test": {
+      "checkins": 38080,
+      "trajectories": 6976,
+      "users": 1659,
+      "pois": 5149
+    }
+  },
+  "poi_coverage": {
+    "pois_in_train": 7829,
+    "train_checkins_per_poi": {
+      "mean": 41.61,
+      "median": 14.0,
+      "min": 1,
+      "max": 9300,
+      "p90": 72.0
+    },
+    "share_of_train_checkins_on_top_1pct_pois": 0.2738,
+    "share_of_pois_with_<=5_train_checkins": 0.0686,
+    "test_pois_seen_in_train": 1.0,
+    "test_target_pois_distinct": 2666
+  },
+  "instances": {
+    "val": {
+      "n": 7045,
+      "revisit_rate": 0.7094,
+      "target_in_history_rate": 0.6903,
+      "target_in_prefix_rate": 0.2341,
+      "new_poi_rate": 0.2906,
+      "prefix_len": {
+        "mean": 4.46,
+        "median": 2.0,
+        "min": 1,
+        "max": 128,
+        "p90": 10.0
+      },
+      "history_trajs": {
+        "mean": 27.33,
+        "median": 25.0,
+        "min": 1,
+        "max": 69,
+        "p90": 47.0
+      },
+      "history_checkins": {
+        "mean": 196.3,
+        "median": 120.0,
+        "min": 2,
+        "max": 2232,
+        "p90": 450.0
+      }
+    },
+    "test": {
+      "n": 6976,
+      "revisit_rate": 0.7349,
+      "target_in_history_rate": 0.7116,
+      "target_in_prefix_rate": 0.2618,
+      "new_poi_rate": 0.2651,
+      "prefix_len": {
+        "mean": 4.46,
+        "median": 2.0,
+        "min": 1,
+        "max": 107,
+        "p90": 10.0
+      },
+      "history_trajs": {
+        "mean": 27.34,
+        "median": 25.0,
+        "min": 1,
+        "max": 69,
+        "p90": 47.0
+      },
+      "history_checkins": {
+        "mean": 197.37,
+        "median": 121.0,
+        "min": 2,
+        "max": 2232,
+        "p90": 457.0
+      }
+    },
+    "sample_test_500": {
+      "n": 500,
+      "revisit_rate": 0.722,
+      "target_in_history_rate": 0.698,
+      "target_in_prefix_rate": 0.246,
+      "new_poi_rate": 0.278,
+      "prefix_len": {
+        "mean": 4.15,
+        "median": 2.0,
+        "min": 1,
+        "max": 61,
+        "p90": 10.0
+      },
+      "history_trajs": {
+        "mean": 26.69,
+        "median": 24.0,
+        "min": 1,
+        "max": 69,
+        "p90": 46.10000000000002
+      },
+      "history_checkins": {
+        "mean": 186.87,
+        "median": 113.0,
+        "min": 2,
+        "max": 2232,
+        "p90": 446.1
+      }
+    },
+    "sample_test_debug20": {
+      "n": 20,
+      "revisit_rate": 0.75,
+      "target_in_history_rate": 0.75,
+      "target_in_prefix_rate": 0.3,
+      "new_poi_rate": 0.25,
+      "prefix_len": {
+        "mean": 4.4,
+        "median": 3.5,
+        "min": 1,
+        "max": 11,
+        "p90": 10.0
+      },
+      "history_trajs": {
+        "mean": 28.05,
+        "median": 26.5,
+        "min": 7,
+        "max": 51,
+        "p90": 47.300000000000004
+      },
+      "history_checkins": {
+        "mean": 202.7,
+        "median": 118.5,
+        "min": 19,
+        "max": 853,
+        "p90": 443.2000000000006
+      }
+    }
+  },
+  "published_reference": {
+    "users": 2282,
+    "pois": 7833
+  },
+  "sample_fingerprints": {
+    "sample_test_500": "126b3ef623afd5f1",
+    "sample_test_debug20": "fcf8f225ba543335"
+  },
+  "random_seed": 42
+}

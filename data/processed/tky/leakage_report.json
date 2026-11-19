@@ -1,0 +1,146 @@
+{
+  "dataset": "tky",
+  "all_passed": true,
+  "checks": [
+    {
+      "name": "train_strictly_before_val",
+      "passed": true,
+      "detail": "train max 2012-12-10 22:34:13 < val min 2012-12-10 22:34:20"
+    },
+    {
+      "name": "val_strictly_before_test",
+      "passed": true,
+      "detail": "val max 2013-01-12 18:57:23 < test min 2013-01-12 18:58:55"
+    },
+    {
+      "name": "each_trajectory_in_exactly_one_split",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "each_trajectory_has_one_user",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no_within_trajectory_gap_>=24h",
+      "passed": true,
+      "detail": "max within-trajectory gap = 0 days 23:59:59"
+    },
+    {
+      "name": "all_trajectories_len_>=2",
+      "passed": true,
+      "detail": "min length = 2"
+    },
+    {
+      "name": "val_users_subset_of_train",
+      "passed": true,
+      "detail": "0 unseen users"
+    },
+    {
+      "name": "val_pois_subset_of_train",
+      "passed": true,
+      "detail": "0 unseen POIs"
+    },
+    {
+      "name": "test_users_subset_of_train",
+      "passed": true,
+      "detail": "0 unseen users"
+    },
+    {
+      "name": "test_pois_subset_of_train",
+      "passed": true,
+      "detail": "0 unseen POIs"
+    },
+    {
+      "name": "poi_index_fitted_on_train_only",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "val_target_is_last_checkin_and_not_in_prefix",
+      "passed": true,
+      "detail": "0 mismatches"
+    },
+    {
+      "name": "val_prefix_not_after_target",
+      "passed": true,
+      "detail": "0 violations"
+    },
+    {
+      "name": "val_history_excludes_target_trajectory",
+      "passed": true,
+      "detail": "0 violations"
+    },
+    {
+      "name": "val_history_only_from_train",
+      "passed": true,
+      "detail": "0 violations"
+    },
+    {
+      "name": "val_history_strictly_before_and_same_user",
+      "passed": true,
+      "detail": "0 violations"
+    },
+    {
+      "name": "val_every_instance_has_history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "val_instance_ids_unique",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "test_target_is_last_checkin_and_not_in_prefix",
+      "passed": true,
+      "detail": "0 mismatches"
+    },
+    {
+      "name": "test_prefix_not_after_target",
+      "passed": true,
+      "detail": "0 violations"
+    },
+    {
+      "name": "test_history_excludes_target_trajectory",
+      "passed": true,
+      "detail": "0 violations"
+    },
+    {
+      "name": "test_history_only_from_train",
+      "passed": true,
+      "detail": "0 violations"
+    },
+    {
+      "name": "test_history_strictly_before_and_same_user",
+      "passed": true,
+      "detail": "0 violations"
+    },
+    {
+      "name": "test_every_instance_has_history",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "test_instance_ids_unique",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "samples_reproducible_with_fixed_seed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "sample_subset_of_test",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "debug_sample_subset_of_main_sample",
+      "passed": true,
+      "detail": ""
+    }
+  ]
+}
