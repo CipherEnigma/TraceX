@@ -27,9 +27,10 @@ from tracex_ir import metrics as M
 from tracex_ir.retrieval import IDF
 
 from . import config as C
+from .aliasing import ALIAS_VERSION, name_fn_for
 from .backends import load_backend
 from .parse import parse_response, user_poi_ids
-from .prompts import SYSTEM_PROMPT, build_prompt, present_names
+from .prompts import SYSTEM_PROMPT, build_prompt
 
 
 # ---------------------------------------------------------------------------
@@ -46,21 +47,12 @@ def settings(model: str, method: str, retriever: str | None, condition: str) -> 
         "llmmob_max_history": C.LLMMOB_MAX_HISTORY, "demo_max_context": C.DEMO_MAX_CONTEXT,
         "prefix_max_checkins": C.PREFIX_MAX_CHECKINS, "include_target_time": C.INCLUDE_TARGET_TIME,
         "system_prompt": SYSTEM_PROMPT,
+        **({"alias_seed": C.SEED, "alias_version": ALIAS_VERSION} if condition == "aliased" else {}),
     }
 
 
 def fingerprint(s: dict) -> str:
     return hashlib.sha1(json.dumps(s, sort_keys=True).encode()).hexdigest()[:12]
-
-
-def name_fn_for(dataset: str, condition: str):
-    if condition in (C.NO_NAMES, "removed"):
-        return None
-    if condition == "present":
-        return present_names
-    if condition == "aliased":
-        raise NotImplementedError("the 'aliased' condition is added with tracex_llm.aliasing (E3)")
-    raise ValueError(f"unknown condition {condition!r}")
 
 
 # ---------------------------------------------------------------------------
