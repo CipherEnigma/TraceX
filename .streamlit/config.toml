@@ -1,0 +1,44 @@
+# TraceX dashboard theme (tokens from the Claude Design "Tokens" board).
+# Light and dark are both defined, so the viewer can switch in the app menu (⋮ -> Settings).
+
+[theme]
+# Streamlit accepts one web-font URL per setting; the Japanese fallback (IBM Plex Sans JP)
+# is loaded by app/tracex.css for the venue names.
+font = "IBM Plex Sans:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+codeFont = "IBM Plex Mono:https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
+baseFontSize = 14
+baseRadius = "6px"
+showWidgetBorder = true
+showSidebarBorder = true
+
+[theme.light]
+primaryColor = "#1F4E8C"
+backgroundColor = "#FCFCFB"
+secondaryBackgroundColor = "#F5F4F1"
+textColor = "#0B0B0B"
+borderColor = "#E6E5E1"
+linkColor = "#1F4E8C"
+codeBackgroundColor = "#F5F4F1"
+
+[theme.light.sidebar]
+backgroundColor = "#FCFCFB"
+secondaryBackgroundColor = "#F5F4F1"
+
+[theme.dark]
+primaryColor = "#6E9BD6"
+backgroundColor = "#1A1A19"
+secondaryBackgroundColor = "#232322"
+textColor = "#F0EFEC"
+borderColor = "#34332F"
+linkColor = "#6E9BD6"
+codeBackgroundColor = "#232322"
+
+[theme.dark.sidebar]
+backgroundColor = "#1A1A19"
+secondaryBackgroundColor = "#232322"
+
+[client]
+toolbarMode = "minimal"
+
+[server]
+runOnSave = false
