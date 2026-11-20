@@ -67,6 +67,13 @@ LLMMOB_MAX_HISTORY = 40       # most recent history check-ins shown (LLM-Mob use
 RETRIEVERS = ("jaccard", "lcs", "bm25")
 DEFAULT_RETRIEVER = "jaccard" # brief names Jaccard / LCS selection for the second LLM method
 DEMO_TOP_K = 5                # demonstrations per prompt (low end of Nishida et al.'s 5-30)
+DEMO_MAX_CONTEXT = 20         # most recent check-ins kept in each demonstration's context
+PREFIX_MAX_CHECKINS = 30      # most recent check-ins of the current trajectory shown
+
+# The prompt states *when* the next check-in happens (LLM-Mob, LLM4POI and Nishida et al.
+# all do this). Only the target's `time` and `weekday` are read - never its POI, category
+# or name. Set to False for a stricter no-target-information variant.
+INCLUDE_TARGET_TIME = True
 
 
 # ---------------------------------------------------------------------------
