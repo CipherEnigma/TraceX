@@ -132,8 +132,10 @@ The name test measures reliance on names, not proof that the data was memorised.
 
 ## Kaggle (`notebooks/kaggle_run.ipynb`)
 
-Set `STAGE` (`debug`, `gate1`, `e1`, `e3`) and `MODEL` (`qwen7b`, `qwen3b`), then *Save Version -> Save & Run All*.
-The notebook pins one T4, clones the branch, rebuilds the data and checks the evaluation samples match the committed
+`STAGE = "all"` runs everything in one *Save Version -> Save & Run All*: for each model in turn (7B, then 3B, on the
+same T4) a 20-instance debug run, a sanity check (more than 20% invalid answers skips that model), E1 and E3, then
+`tracex_llm.evaluate` and `tracex_llm.report`. A failed run is logged and the rest continue. Single stages (`debug`,
+`gate1`, `e1`, `e3` with one `MODEL`) still work. The notebook pins one T4, clones the branch, rebuilds the data and checks the evaluation samples match the committed
 ones, restores earlier results from an attached dataset (so finished runs are skipped), runs the stage, writes
 `tracex_llm_results.zip` after every run, and prints measured speed and the Gate 1 check. A private repo can be cloned
 with a `GITHUB_TOKEN` Kaggle secret; the token never appears in output.

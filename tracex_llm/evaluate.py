@@ -267,7 +267,10 @@ def main(argv=None):
     (a.out_dir / f"evaluation{suffix}.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
     md = to_markdown(res)
     (a.out_dir / f"results{suffix}.md").write_text(md, encoding="utf-8")
-    print(md)
+    try:
+        print(md)
+    except UnicodeEncodeError:  # Windows consoles (cp1252) cannot show the Delta sign
+        print(md.encode("ascii", "replace").decode("ascii"))
     print(f"[evaluate] wrote {a.out_dir}")
     return res
 
