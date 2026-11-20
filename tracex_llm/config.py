@@ -48,10 +48,18 @@ QUANTIZATION = {
 }
 
 # Brief: temperature 0 -> greedy decoding, no sampling.
+# Qwen2.5's own generation_config sets repetition_penalty=1.05, which stays active under
+# greedy decoding and pushes the model away from ids already in the prompt - that would
+# bias the copy behaviour E1/E2 measure. It is reset to 1.0 so decoding is pure greedy.
 GENERATION = {
     "do_sample": False,
     "max_new_tokens": 256,
+    "repetition_penalty": 1.0,
 }
+
+# Prompts per forward pass. Fixed for every run (batched fp16 numerics can differ slightly
+# from batch size 1, so all reported runs use the same value). Halved automatically on OOM.
+BATCH_SIZE = 8
 
 
 # ---------------------------------------------------------------------------
