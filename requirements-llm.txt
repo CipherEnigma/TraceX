@@ -1,0 +1,7 @@
+# LLM pipeline and dashboard (Member 3). Install on top of the base requirements.
+# torch is not listed: Kaggle GPU images ship a CUDA build of torch already.
+-r requirements.txt
+transformers>=4.45
+accelerate>=0.30
+bitsandbytes>=0.43
+streamlit>=1.35
