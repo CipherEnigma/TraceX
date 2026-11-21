@@ -42,3 +42,24 @@ for inst in ds.instances("sample_test_500"):
 - Check-ins are the dicts from the data pipeline (`poi_id`, `category`, `time`, `hour`, `weekday`, plus `name` for Massive-STEPS).
 - Default method and top-k are in `tracex_ir/defaults.json`, selected on the validation split with `python -m tracex_ir.tune` (BM25, k1=1.5, b=0, top-k 3).
 - E1 non-LLM reference numbers: `reports/retrieval/<dataset>_results.json`, keys `prediction.frequency` and `prediction.<method>_vote`.
+
+## LLM pipeline, experiments and dashboard (Member 3)
+
+```bash
+pip install -r requirements-llm.txt
+python -m tracex_llm.run --dataset nyc --model qwen7b --sample sample_test_debug20   # needs a CUDA GPU
+python -m tracex_llm.evaluate && python -m tracex_llm.report                        # tables + figures
+streamlit run app/dashboard.py                                                       # dashboard
+python -m pytest tests/test_llm.py -q                                                # no GPU needed
+```
+
+- Qwen2.5-7B-Instruct and Qwen2.5-3B-Instruct in 4-bit, greedy decoding, both on one Kaggle T4
+  ([notebooks/kaggle_run.ipynb](notebooks/kaggle_run.ipynb): set `STAGE` and `MODEL`, then *Save & Run All*).
+- Two prompting methods: LLM-Mob (recent history) and retrieved demonstrations (Jaccard, via Member 2's
+  `retrieve_demonstrations`). Neither ever sees the target place.
+- E1 heuristic floor, E2 revisit vs new and E3 name test (names present / removed / aliased on Massive-STEPS Tokyo),
+  with bootstrap CIs, paired differences, McNemar tests and Holm correction.
+- Resumable runs: `results/llm/<dataset>/<run>.jsonl` plus a `.meta.json` with the GPU, versions and a settings fingerprint.
+- Results: [reports/llm/results.md](reports/llm/results.md) and `reports/llm/figures/`. Perturbed E3 test sets:
+  [data/perturbed/msteps_tokyo](data/perturbed/msteps_tokyo).
+- Full details, settings and limits: [docs/llm_pipeline.md](docs/llm_pipeline.md).

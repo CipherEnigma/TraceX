@@ -1,0 +1,57 @@
+{
+  "run": "nyc__qwen3b__retrieval-jaccard__none__sample_test_500",
+  "fingerprint": "133256701375",
+  "settings": {
+    "model": "qwen3b",
+    "hf_id": "Qwen/Qwen2.5-3B-Instruct",
+    "load_in_4bit": true,
+    "quantization": {
+      "load_in_4bit": true,
+      "bnb_4bit_quant_type": "nf4",
+      "bnb_4bit_use_double_quant": true,
+      "bnb_4bit_compute_dtype": "float16"
+    },
+    "generation": {
+      "do_sample": false,
+      "max_new_tokens": 256,
+      "repetition_penalty": 1.0
+    },
+    "batch_size": 8,
+    "method": "retrieval",
+    "retriever": "jaccard",
+    "demo_top_k": 5,
+    "condition": "none",
+    "n_predictions": 10,
+    "llmmob_max_history": 40,
+    "demo_max_context": 20,
+    "prefix_max_checkins": 30,
+    "include_target_time": true,
+    "system_prompt": "You predict the next place (point of interest, POI) a user will check in at, using only the user's own check-in records. Every POI is identified by an integer ID. Reply with a single JSON object and nothing else."
+  },
+  "sessions": [
+    {
+      "started": "2026-11-21T00:00:01+00:00",
+      "backend": {
+        "model": "qwen3b",
+        "hf_id": "Qwen/Qwen2.5-3B-Instruct",
+        "backend": "hf",
+        "quantization": "4bit-nf4",
+        "generation": {
+          "do_sample": false,
+          "max_new_tokens": 256,
+          "repetition_penalty": 1.0
+        },
+        "batch_size": 8,
+        "gpu": "Tesla T4",
+        "torch": "2.11.0+cu130",
+        "transformers": "5.20.2",
+        "python": "3.13.16",
+        "bitsandbytes": "0.50.2"
+      },
+      "todo": 500,
+      "finished": "2026-11-21T00:18:36+00:00",
+      "seconds": 1115.2,
+      "sec_per_instance": 2.23
+    }
+  ]
+}
