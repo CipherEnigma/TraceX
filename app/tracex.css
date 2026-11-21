@@ -115,13 +115,15 @@ section[data-testid="stSidebar"] { width: 240px !important; min-width: 240px !im
 .vc-band { position: absolute; left: 0; right: 0; background: var(--band); }
 .vc-heur { position: absolute; left: 0; right: 0; border-top: 1.5px dashed var(--heur); z-index: 2; }
 .vc-heurlab { position: absolute; right: 0; font-size: 12px; line-height: 16px; color: var(--ink2); z-index: 2; }
-.vc-groups { position: relative; z-index: 1; height: 100%; display: flex; justify-content: space-around; }
+.vc-groups { position: relative; height: 100%; /* no z-index: labels and tooltips must rise above the heuristic line */ display: flex; justify-content: space-around; }
 .vc-group { display: flex; height: 100%; }
 .vc-bar { position: relative; height: 100%; }
 .vc-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 2px 2px 0 0; box-sizing: border-box; min-height: 1px; }
 .vc-whisk { position: absolute; left: 50%; margin-left: -5px; width: 10px; border-top: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); box-sizing: border-box; }
 .vc-whisk::after { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; border-left: 1.5px solid var(--ink); }
 .vc-val { position: absolute; left: -24px; right: -24px; text-align: center; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink); }
+.vc-val { z-index: 3; }
+.vc-val > span { background: var(--bg); padding: 0 3px; border-radius: 2px; } /* masks the heuristic line behind a label */
 .vc-val.big { display: flex; flex-direction: column; align-items: center; }
 .vc-val.big b { font-size: 16px; line-height: 24px; font-weight: 600; }
 .vc-val.big i { font-style: normal; font-size: 12px; line-height: 16px; color: var(--ink2); font-weight: 400; }

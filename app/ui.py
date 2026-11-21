@@ -232,7 +232,7 @@ def bar_chart(groups: list[dict], heuristic: dict | None = None, height=300, bar
                 lab = (f'<span class="vc-val big" style="bottom:calc({P(b["hi"])}% + 6px)"><b>{num(big_v)}</b>'
                        f'<i>{esc(big_n)}</i></span>')
             elif label_mode == "value":
-                lab = f'<span class="vc-val" style="bottom:calc({P(b["hi"])}% + 4px)">{num(b["v"])}</span>'
+                lab = f'<span class="vc-val" style="bottom:calc({P(b["hi"])}% + 4px)"><span>{num(b["v"])}</span></span>'
             else:
                 lab = ""
             tip = ""
