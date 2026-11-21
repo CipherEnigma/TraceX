@@ -108,8 +108,11 @@ The likely cause is a difference in how the reference code prunes trajectories, 
 }
 ```
 
-**Never use `target`, `target_in_history`, `target_in_prefix` or `is_revisit` when building a prompt or a
-retrieval query.** They exist only for scoring and for the E2 breakdown.
+**Allowed from the target: only its time** (`target["time"]`, `target["hour"]`, `target["weekday"]`). This
+follows LLM-Mob and Nishida et al., which give the model the time of the next check-in. Every method must use the
+same rule: the frequency heuristic scores by the target hour and weekday, and both LLM prompts show the target time.
+**Never use `target["poi_id"]`, `target["category"]`, `target["name"]`, `target_in_history`, `target_in_prefix` or
+`is_revisit` in a prompt or a retrieval query.** They exist only for scoring and for the E2 breakdown.
 
 ## Using the data from Python
 
@@ -138,6 +141,9 @@ last check-in and absent from the prefix, history only from train and strictly b
 instance having history, unique instance IDs, and reproducible samples. The full list with results is in the data report.
 
 ## Notes for the paper (limits)
+
+- All methods see the time of the check-in they predict, as in the published setups (LLM-Mob, Nishida et al.).
+  In real use the time of the next visit is not known in advance, so reported accuracy is an upper bound for that setting.
 
 - The 500-instance NYC sample has a higher revisit rate (78.2%) than the full NYC test set (73.7%). This is ordinary
   sampling variation; report E2 rates on the sample alongside the full-set rate.
