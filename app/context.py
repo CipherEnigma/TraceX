@@ -19,7 +19,7 @@ def sidebar():
         st.html(f'<div class="tx-root" style="padding:0 2px;display:flex;flex-direction:column;gap:12px">'
                 f'<div><div class="tx-note">Results last updated</div>'
                 f'<div class="tx-mono">{ui.esc(data.last_updated(sig))}</div></div>'
-                f'<div class="tx-note">Light / dark: app menu ⋮ → Settings</div></div>')
+                f'<div class="tx-note">Light / dark: menu ⋮ at the top right</div></div>')
 
 
 def get(loading_slot=None):

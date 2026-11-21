@@ -1,7 +1,7 @@
 """Shared UI pieces for the TraceX dashboard: styles, formatting, HTML components.
 
 Everything custom is plain HTML styled by tracex.css, so it shares the design tokens and
-switches to dark mode with Streamlit's theme (Settings -> Theme).
+switches to dark mode with Streamlit's theme (the ⋮ menu, top right).
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import streamlit as st
 
 CSS = Path(__file__).with_name("tracex.css")
 
-DARK_VARS = """:root{--bg:#1A1A19;--surface:#232322;--border:#34332F;--ink:#F0EFEC;--ink2:#C3C2B7;--muted:#7A7973;
+DARK_VARS = """:root[data-tx-theme="dark"]{--bg:#1A1A19;--surface:#232322;--border:#34332F;--ink:#F0EFEC;--ink2:#C3C2B7;--muted:#7A7973;
 --mutedText:#A3A299;--accent:#6E9BD6;--accentTint:rgba(110,155,214,0.14);--s7:#3987E5;--s3:#D95926;--sa:#199E70;
 --heur:#C3C2B7;--band:rgba(195,194,183,0.12);--ok:#5DB37E;--okTint:rgba(93,179,126,0.13);--bad:#E0735F;
 --badTint:rgba(224,115,95,0.13);--hover:rgba(240,239,236,0.04);--nameTint:rgba(57,135,229,0.22);--skel:#2C2C2A;
@@ -44,13 +44,30 @@ def esc(x) -> str:
 # ---------------------------------------------------------------------------
 # Styles and page frame
 # ---------------------------------------------------------------------------
+# Streamlit does not tell the server when the viewer switches theme in the menu (streamlit#11920), so the
+# browser decides: watch the app background Streamlit paints and set <html data-tx-theme="light|dark">,
+# which switches the dark token block above. Runs once per page load; idempotent across reruns.
+THEME_JS = """(function(){
+  if (window.__txTheme) return; window.__txTheme = true;
+  function sync(){
+    var app = document.querySelector('.stApp'); if (!app) return;
+    var c = (getComputedStyle(app).backgroundColor.match(/[\\d.]+/g) || []).map(Number);
+    if (c.length < 3) return;
+    var t = (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) < 128 ? 'dark' : 'light';
+    if (document.documentElement.getAttribute('data-tx-theme') !== t) document.documentElement.setAttribute('data-tx-theme', t);
+  }
+  sync(); setInterval(sync, 250);
+})();"""
+
+
 def inject_css():
     css = CSS.read_text(encoding="utf-8")
-    try:
+    try:  # first paint before the script runs: use the server's guess
         dark = st.context.theme.type == "dark"
     except Exception:
         dark = False
-    st.html(f"<style>{css}{DARK_VARS if dark else ''}</style>")
+    first = DARK_VARS.replace(':root[data-tx-theme="dark"]', ':root:not([data-tx-theme])') if dark else ""
+    st.html(f"<style>{css}{DARK_VARS}{first}</style><script>{THEME_JS}</script>", unsafe_allow_javascript=True)
 
 
 def page_header(title: str, desc: str):

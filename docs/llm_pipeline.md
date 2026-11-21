@@ -148,7 +148,7 @@ Measured on a Tesla T4: Qwen2.5-7B takes 3.6-4.2 s per instance (prompts of abou
 `streamlit run app/dashboard.py`. Six pages built from the Claude Design boards: Overview, E1 Heuristic floor, E2
 Revisit vs new, E3 Name test, Instance explorer, Runs & behaviour. It reads `results/llm/` live (new Kaggle results
 appear on refresh) and uses `tracex_llm.evaluate`, so every number matches `reports/llm/results.md`. Theme tokens are
-in `.streamlit/config.toml` and `app/tracex.css`; light and dark are both defined (app menu -> Settings).
+in `.streamlit/config.toml` and `app/tracex.css`; light and dark are both defined (switch in the ⋮ menu at the top right).
 `TRACEX_RESULTS_DIR=<folder>` points it at another results folder.
 
 ## Limits to state in the paper
