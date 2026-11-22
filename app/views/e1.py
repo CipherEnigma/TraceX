@@ -92,6 +92,34 @@ def _dataset_block(dataset: str, metric: str, models: list[str], methods: list[s
     ui.caption(" ".join(notes))
 
 
+def _engine_block(dataset: str):
+    """Stronger non-LLM baselines and the assistant's evidence engine (Member 2's reports/assistant/results.json)."""
+    ui.section(f"Stronger baselines and the assistant engine · {ui.DATASETS[dataset]}",
+               "non-LLM rankers on the same instances · Δ vs the time-aware heuristic, p = McNemar, Holm-adjusted")
+    rep = data.assistant_report("results")
+    d = (rep or {}).get("datasets", {}).get(dataset)
+    if not d:
+        ui.caption("Appears when the offline evaluation of the assistant engine is in the repo "
+                   "(reports/assistant/results.json, written by <code>python -m tracex_assist.evaluate</code>).")
+        return
+    rows = []
+    for key, m in d.get("methods", {}).items():
+        v = m.get("vs_frequency")
+        name = ui.esc(m.get("label", key)) + (f" {ui.tag('post hoc')}" if m.get("exploratory") else "")
+        rows.append({"cls": "ref" if key == "frequency" else "", "cells": [
+            name, str(m.get("n", d.get("n", "–"))), ui.pct(m.get("acc1")), ui.pct(m.get("acc5")), ui.pct(m.get("mrr")),
+            ui.pct(m.get("ndcg5")), (ui.diff(v["acc1"]) if v else "–", "strong"), ui.pval(v.get("p_holm")) if v else "–"]})
+    st.html(ui.table([("Ranker", "l"), ("n", "r"), ("Acc@1", "r"), ("Acc@5", "r"), ("MRR", "r"), ("NDCG@5", "r"),
+                      ("Δ Acc@1 vs heuristic", "r"), ("p (Holm)", "r")], rows, min_width=900))
+    cat = d.get("category")
+    if cat:
+        crow = [{"cells": [ui.esc(m.get("label", k)), ui.pct(m.get("acc1")), ui.pct(m.get("acc5"))]} for k, m in cat.items()]
+        st.html('<div class="tx-root tx-h3" style="margin-top:8px">Kind of place (category) prediction</div>' +
+                ui.table([("Ranker", "l"), ("Category Acc@1", "r"), ("Category Acc@5", "r")], crow))
+    ui.caption("Markov = where the user went next after their current place; recency = most recently visited places; "
+               "engine = the assistant's fused ranking. Rows tagged post hoc were designed after seeing the LLM results.")
+
+
 def render():
     ui.page_header("E1 Heuristic floor", "Does the LLM beat a counter that ranks each user’s most-visited places?")
     c1, c2, c3, c4 = st.columns([2.2, 1.6, 1, 1], vertical_alignment="bottom")
@@ -110,3 +138,4 @@ def render():
     methods = METHOD_ORDER if meth == "all" else [meth]
     for d in (list(ui.DATASETS) if ds == "all" else [ds]):
         _dataset_block(d, metric, models, methods, res, sample)
+        _engine_block(d)
