@@ -4,7 +4,7 @@
     python -m tracex_assist.evaluate --dataset nyc --sample sample_test_500
 
 Measures Acc@1/5, MRR, NDCG@5 and category-level Acc@1/5 for:
-    frequency   - plain visit counter (from tracex_ir.baselines)
+    heuristic   - time-aware frequency heuristic (from tracex_ir.baselines)
     markov      - bigram: last place -> next place
     recency     - most recent places first
     engine      - evidence engine's fused ranking (gather().habits)
@@ -29,11 +29,12 @@ import numpy as np
 
 from tracex_data.api import load_dataset
 from tracex_ir import metrics as M
+from tracex_ir.baselines import GlobalPopularity, frequency_baseline
 from tracex_llm import stats as S
 
 from .contract import Context
 from .evidence import gather
-from .stub import build_profile, place_index
+from .api import build_profile, place_index
 
 DATASETS = ["nyc", "tky", "msteps_tokyo"]
 SAMPLE = "sample_test_500"
@@ -63,8 +64,8 @@ def _score(ranked: list[int], target: int, poi_cat: dict, target_cat: str) -> di
 # ---------------------------------------------------------------------------
 # Baselines
 # ---------------------------------------------------------------------------
-def _frequency_ranking(profile) -> list[int]:
-    return [pid for pid, _ in profile.top_places]
+def _heuristic_ranking(inst: dict, history: list[dict], pop: GlobalPopularity) -> list[int]:
+    return frequency_baseline(inst, history, pop, n=10)
 
 
 def _markov_ranking(profile, current_poi: int | None) -> list[int]:
@@ -138,8 +139,11 @@ def evaluate(datasets=None, sample: str = SAMPLE, n_boot: int = S.N_BOOT) -> dic
         llm_ranks = _load_llm_rankings(ds_name, sample)
         insts = ds.instances(sample)
 
+        train = ds.train_trajectories()
+        pop = GlobalPopularity(train)
+
         methods = {
-            "frequency": {},
+            "heuristic": {},
             "markov": {},
             "recency": {},
             "engine": {},
@@ -158,7 +162,7 @@ def evaluate(datasets=None, sample: str = SAMPLE, n_boot: int = S.N_BOOT) -> dic
                               current_poi=current_poi)
 
             rankings = {
-                "frequency": _frequency_ranking(profile),
+                "heuristic": _heuristic_ranking(inst, history, pop),
                 "markov": _markov_ranking(profile, current_poi),
                 "recency": _recency_ranking(profile),
                 "engine": _engine_ranking(profile, context, places),
@@ -191,8 +195,8 @@ def evaluate(datasets=None, sample: str = SAMPLE, n_boot: int = S.N_BOOT) -> dic
             res["engine"][ds_name] = {"acc1": eng["acc1"]["mean"], "acc5": eng["acc5"]["mean"],
                                       "n": eng["n"]}
 
-        # Paired comparisons: each method vs frequency
-        freq_rows = methods["frequency"]
+        # Paired comparisons: each method vs heuristic
+        freq_rows = methods["heuristic"]
         for name in ["markov", "recency", "engine"] + (["llm_fusion"] if "llm_fusion" in methods else []):
             other_rows = methods[name]
             ids = sorted(set(freq_rows) & set(other_rows))
@@ -239,7 +243,7 @@ def to_markdown(res: dict) -> str:
           "| Dataset | Method | n | Acc@1 | Acc@5 | Cat-Acc@1 | Cat-Acc@5 | MRR | NDCG@5 |",
           "|---|---|---|---|---|---|---|---|---|"]
     for ds_name in DATASETS:
-        for name in ["frequency", "markov", "recency", "engine", "llm_fusion"]:
+        for name in ["heuristic", "markov", "recency", "engine", "llm_fusion"]:
             if name not in res["methods"] or ds_name not in res["methods"][name]:
                 continue
             s = res["methods"][name][ds_name]
@@ -251,7 +255,7 @@ def to_markdown(res: dict) -> str:
           "| Dataset | Method | Subset | n | Acc@1 | Cat-Acc@1 |",
           "|---|---|---|---|---|---|"]
     for ds_name in DATASETS:
-        for name in ["frequency", "markov", "recency", "engine", "llm_fusion"]:
+        for name in ["heuristic", "markov", "recency", "engine", "llm_fusion"]:
             if name not in res["methods"] or ds_name not in res["methods"][name]:
                 continue
             s = res["methods"][name][ds_name]
@@ -260,7 +264,7 @@ def to_markdown(res: dict) -> str:
                 L.append(f"| {ds_name} | {name} | {tag} | {sub['n']} | "
                          f"{_ci(sub['acc1'])} | {_ci(sub['cat_acc1'])} |")
 
-    L += ["", "## vs frequency baseline", "",
+    L += ["", "## vs heuristic baseline", "",
           "| Dataset | Method | n | Δ Acc@1 | Δ Cat-Acc@1 | p (Acc@1) |",
           "|---|---|---|---|---|---|"]
     for c in res["comparisons"]:
