@@ -65,6 +65,22 @@ def test_parse_intent(q, new, kind):
     assert llm.parse_intent(q) == {"want_new": new, "want_kind": kind}
 
 
+@pytest.mark.parametrize("q,kind", [  # the place the user is at / coming from is not the request
+    ("I just left the bar. where to eat?", "food"),
+    ("just got off the train", None),
+    ("where can I eat after the gym?", "food"),
+    ("I am at the station, any coffee nearby?", "coffee"),
+    ("coming from the park, want drinks", "drinks"),
+    ("back from the coffee shop, what now?", None),
+    ("I am in the mall, where can I buy groceries", "shopping"),
+    ("take me to a train station", "transport"),
+    ("I want to go to a park", "outdoors"),
+    ("lunch in shibuya?", "food"),
+])
+def test_kind_ignores_where_the_user_is(q, kind):
+    assert llm.wanted_kind(q) == kind
+
+
 # ---------------------------------------------------------------- view
 def test_view_has_exact_numbers_and_labels():
     v = llm.evidence_view(evidence(), P)
@@ -149,3 +165,22 @@ def test_ollama_status_never_raises(monkeypatch):
     monkeypatch.setattr(llm, "OLLAMA_URL", "http://127.0.0.1:9")  # nothing listens there
     s = llm.ollama_status()
     assert s["running"] is False and s["error"]
+
+
+def test_requested_kind_narrows_known_places():
+    ev = evidence()
+    ev.context.want_kind = "coffee"  # the user knows Coffee Shop #3 -> only that one is offered
+    v = llm.evidence_view(ev, P)
+    assert [x["place"] for x in v["likely_next"]] == ["Coffee Shop #3"] and v["new_places"] == []
+    ev.context.want_kind = "food"  # Fast Food Restaurant #2 is food; Coffee Shop is not
+    assert [x["place"] for x in llm.evidence_view(ev, P)["likely_next"]] == ["Fast Food Restaurant #2"]
+    ev.context.want_kind = "drinks"  # no known bar -> new places of that kind (none here) and no habits
+    v = llm.evidence_view(ev, P)
+    assert v["likely_next"] == [] and v["new_places"] == []
+    assert llm.validate(llm.fallback_answer(ev, P, "a bar?"), v) == []
+
+
+def test_filler_sentences_are_removed():
+    t = "Go to Chinese Restaurant #332 (3 of 3 times (100%)). You will enjoy it."
+    assert llm.strip_filler(t) == "Go to Chinese Restaurant #332 (3 of 3 times (100%))."
+    assert llm.strip_filler("Great choice!") == "Great choice!"  # never return an empty answer

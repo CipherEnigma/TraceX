@@ -157,10 +157,13 @@ def _routine_callout(persona: dict, places, here_key: str):
                 f'<b>{ui.esc(llm.label(places, persona["from_poi"]))}</b> this user went to '
                 f'<b>{ui.esc(llm.label(places, persona["to_poi"]))}</b> {persona["count"]} of {persona["total"]} times '
                 f'({ui.num(100 * share, 0)}%), usually about {ui.num(persona["median_gap_hours"], 1)} h later · '
-                f'typically {WD_LONG[persona["weekday"]]} around {persona["hour"]:02d}:00</span></div>')
+                f'across all days · example moment: {WD_LONG[persona["weekday"]]} {persona["hour"]:02d}:00'
+                f'</span></div>')
     with b:
         st.button("Load this routine", key=f"{here_key}_load", on_click=load, width="stretch",
-                  help="Set the day, time and current place to this routine, then ask “Where should I go next?”")
+                  help="Set the current place to the routine's start and the day and time to one example moment when "
+                       "it happened, then ask “Where should I go next?”. The answer may quote narrower counts for "
+                       "that day and time than the all-days count here.")
 
 
 # ---------------------------------------------------------------------------
