@@ -280,9 +280,10 @@ Rows appear in the order of `methods`; `llm_fusion` is tagged *post hoc*. The pa
 heuristic (the E1 baseline, from `tracex_llm.evaluate`) as the first row. Optional `"comparator": "heuristic"` at the
 top level names what `comparisons` are measured against (default: `frequency`, shown as "visit counter").
 
-**Open items for Member 2** (found at integration): (1) compare against the time-aware heuristic
-(`tracex_ir.baselines.frequency_baseline`, the E1 baseline) rather than the plain counter, and set
-`"comparator": "heuristic"`; (2) build profiles with `from .api import build_profile, place_index`, not `.stub`.
+**Resolved at integration:** Member 2's evaluation now compares against the time-aware heuristic (method key
+`heuristic`, from `tracex_ir.baselines.frequency_baseline`, identical to the E1 baseline) and builds profiles through
+`tracex_assist.api` (Member 1's real module). With a `heuristic` row present the page labels the comparison
+"vs time-aware heuristic" without needing a `comparator` key.
 
 **Demo personas** (`profile.demo_users()[i]["persona"]`, Member 1): `from_poi → to_poi` happened `count` of `total`
 times **across all days**; `weekday`/`hour` are one example moment when it happened (used by *Load this routine*),

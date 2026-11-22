@@ -157,6 +157,11 @@ Accuracy@1 (%), 500 test cases (334 for Massive-STEPS Tokyo):
 4. **Model size.** 7B beats 3B by 2-8 points (significant on NYC and Massive-STEPS LLM-Mob). The bigger model is better
    at choosing *which* of the user's places comes next, but neither predicts anything new.
 
+5. **The assistant engine (pure IR, no LLM)** matches the strong heuristic where users have a rich history (NYC
+   29.2 vs 28.6, TKY 19.8 vs 20.8, both not significant) and clearly beats it where history is thin (Massive-STEPS
+   Tokyo 22.2 vs 12.3, p < 0.001). Fusing the saved LLM rankings into it does not help (exploratory). So the LLM is
+   used only to explain the engine's evidence in the assistant.
+
 **Answer to "Copy, Recall, or Reason?": Copy.** On these benchmarks, Qwen2.5 LLMs predict the next place by
 re-ranking the user's own habits. With a rich history, a simple time-aware counter does that job better; only when the
 history is thin does the LLM's re-ranking add something. They never predict new places and do not depend on venue
