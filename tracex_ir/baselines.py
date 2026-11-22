@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime
 
-from .retrieval import poi_seq, retrieve
+from .retrieval import DEFAULTS, poi_seq, retrieve
+
+# Time-aware heuristic settings, selected on the validation split by `python -m tracex_ir.tune_heuristic`.
+HEURISTIC = DEFAULTS.get("heuristic", {"half_life_days": 90.0, "hour_w": 1.0, "weekday_w": 1.0, "hour_window": 1})
 
 
 class GlobalPopularity:
@@ -25,8 +29,36 @@ def _fill(scored: Counter, pop: GlobalPopularity, n):
     return ranked[:n]
 
 
-def frequency_baseline(inst, history, pop, n=20, include_prefix=True):
-    """Rank POIs by how often this user visited them (history + current prefix)."""
+def _ts(c):
+    return datetime.fromisoformat(c["time"])
+
+
+def frequency_baseline(inst, history, pop, n=20, include_prefix=True, params=None):
+    """The brief's heuristic: past visits counted by POI, hour and weekday, with recency decay.
+
+    score(poi) = sum over the user's earlier check-ins at that POI of
+        0.5 ** (age_days / half_life) * (1 + hour_w * [hour within window] + weekday_w * [same weekday])
+    `age_days` is measured from the target's time. The ONLY target fields read are `time`,
+    `hour` and `weekday` (the same fields the LLM prompts are given); never its POI or category.
+    """
+    P = {**HEURISTIC, **(params or {})}
+    tgt = inst["target"]
+    t0, hour, wd = _ts(tgt), tgt["hour"], tgt["weekday"]
+    checkins = [c for t in history for c in t["checkins"]]
+    if include_prefix:
+        checkins += list(inst["prefix"])
+    scores = Counter()
+    for c in checkins:
+        age = max((t0 - _ts(c)).total_seconds() / 86400.0, 0.0)
+        d = abs(c["hour"] - hour)
+        near = min(d, 24 - d) <= P["hour_window"]
+        w = 0.5 ** (age / P["half_life_days"]) * (1 + P["hour_w"] * near + P["weekday_w"] * (c["weekday"] == wd))
+        scores[c["poi_id"]] += w
+    return _fill(scores, pop, n)
+
+
+def plain_frequency_baseline(inst, history, pop, n=20, include_prefix=True):
+    """Plain visit counter (no time or recency); kept as the simplest reference."""
     c = Counter()
     for t in history:
         c.update(poi_seq(t))

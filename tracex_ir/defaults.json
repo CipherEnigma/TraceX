@@ -124,5 +124,12 @@
     "hybrid(bm25+jaccard)": 0.6412040545568214,
     "hybrid(bm25+tfidf)": 0.6432848818487035,
     "hybrid(bm25+lcs+jaccard)": 0.6388339917506386
+  },
+  "heuristic": {
+    "half_life_days": 90.0,
+    "hour_w": 4.0,
+    "weekday_w": 0.0,
+    "hour_window": 1,
+    "selected_on": "validation (500 instances per dataset, seed 42), mean MRR across datasets"
   }
 }
