@@ -186,7 +186,10 @@ def _place_card(pid: int, role: str, prof, ev, places, current: int | None) -> s
 def _map(prof, ev, places, current: int | None, key: str):
     """Pick a place in the chips or click it on the map: it is ringed, labelled, zoomed to and described."""
     pts = _map_points(prof, ev, places, current)
-    hl_key, map_key = f"{key}_hl", f"{key}_map"
+    hl_key, ver_key = f"{key}_hl", f"{key}_mapv"
+    # Streamlit dims every other layer (our ring and label too) while a map object is selected, so after a click
+    # the highlight is kept in our own state and the map widget starts fresh under a new key.
+    map_key = f"{key}_map{st.session_state.get(ver_key, 0)}"
     if st.session_state.get(hl_key) not in pts:
         st.session_state[hl_key] = None
 
@@ -195,6 +198,7 @@ def _map(prof, ev, places, current: int | None, key: str):
         objs = (state.get("selection") or {}).get("objects", {}).get("places", [])
         if objs:
             st.session_state[hl_key] = int(objs[0]["poi_id"])
+            st.session_state[ver_key] = st.session_state.get(ver_key, 0) + 1
 
     st.html(ui.legend([(ui.sw("var(--s3)"), "You are here"), (ui.sw("sw-7"), "Usual places and suggestions"),
                        (ui.sw("sw-a"), "New places nearby"), ('<span class="lg-ring"></span>', "Selected")]))
