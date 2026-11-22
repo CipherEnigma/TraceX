@@ -142,7 +142,8 @@ Rules:
    about the places.
 8. Places in "likely_next" are places the user already knows. Never call them new.
 9. If "asked_for" is given (for example "food"), focus on that kind of place.
-10. Speak to the user as "you". At most 120 words. No lists longer than 3 items. No JSON."""
+10. Speak to the user as "you". At most 120 words. No lists longer than 3 items. No JSON.
+11. Stop after the facts: no closing remarks, no "you will enjoy it", no sales talk."""
 
 
 def build_messages(question: str, view: dict, stricter: list[str] | None = None) -> list[dict]:
