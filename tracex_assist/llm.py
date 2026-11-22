@@ -85,7 +85,8 @@ def _why(f) -> str:
         "similar_trip": f"it came next in {n} similar past trips ({p})",
         "category": f"{n} of your next stops were this kind of place ({p})",
     }.get(f.kind, f"{n} ({p})")
-    return f"{phrase} [based on: {f.level}]" if f.level else phrase
+    level = re.sub(r"^\s*you,\s*", "", f.level or "")  # "you, after this place, on Fri mornings" -> natural aside
+    return f"{phrase} ({level})" if level else phrase
 
 
 def wants_new(question: str) -> bool:
