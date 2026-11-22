@@ -17,6 +17,9 @@ def test_metrics():
     assert M.reciprocal_rank([5, 2], {2}) == 0.5
     assert abs(M.average_precision([1, 2, 3], {1, 3}) - (1 + 2 / 3) / 2) < 1e-9
     assert M.ndcg_at_k([1], {1}, 5) == 1.0 and M.accuracy_at_k([1, 2], 2, 1) == 0.0
+    assert M.category_accuracy_at_k(["Bar", "Cafe", "Gym"], "Cafe", 1) == 0.0
+    assert M.category_accuracy_at_k(["Bar", "Cafe", "Gym"], "Cafe", 2) == 1.0
+    assert M.category_accuracy_at_k(["Bar", None, "Gym"], "Cafe", 3) == 0.0
 
 
 def test_similarities():

@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Copy, Recall, or Reason? Where does LLM accuracy in next-POI prediction come from</title>
+<style>
+  @page { size: A4; margin: 22mm 20mm 22mm 20mm;
+          @bottom-center { content: counter(page); font: 9pt "Times New Roman", serif; } }
+  html { font: 10.8pt/1.42 "Times New Roman", Times, serif; color: #111; }
+  body { margin: 0; text-align: justify; hyphens: auto; }
+  h1 { font-size: 19pt; text-align: center; margin: 0 0 6pt; line-height: 1.2; }
+  .sub { text-align: center; font-size: 11.5pt; margin-bottom: 10pt; font-style: italic; }
+  .authors { text-align: center; margin: 8pt 0 2pt; font-size: 11pt; }
+  .affil { text-align: center; font-size: 9.5pt; color: #333; margin-bottom: 14pt; }
+  h2 { font-size: 12.5pt; margin: 15pt 0 4pt; break-after: avoid; }
+  h3 { font-size: 11pt; margin: 10pt 0 3pt; font-style: italic; break-after: avoid; }
+  p { margin: 0 0 6pt; }
+  .abs { margin: 0 12mm 6pt; font-size: 10.2pt; }
+  .abs b { font-variant: small-caps; }
+  figure { margin: 8pt 0 10pt; text-align: center; break-inside: avoid; }
+  figure img { max-width: 100%; }
+  figcaption { font-size: 9.3pt; text-align: justify; margin-top: 3pt; }
+  .pair { display: flex; gap: 6px; align-items: flex-start; }
+  .pair figure { flex: 1; margin: 0; }
+  table { border-collapse: collapse; margin: 6pt auto 4pt; font-size: 8.6pt; width: 100%; break-inside: avoid; }
+  th, td { padding: 2.2pt 4pt; text-align: right; }
+  th { border-top: 1.2pt solid #000; border-bottom: .7pt solid #000; font-weight: bold; }
+  table th:first-child, table td:first-child { text-align: left; }
+  .L2 th:nth-child(2), .L2 td:nth-child(2), .L3 th:nth-child(-n+3), .L3 td:nth-child(-n+3) { text-align: left; }
+  tr:last-child td { border-bottom: 1.2pt solid #000; }
+  tr.sep td { border-top: .5pt solid #999; }
+  td.b, tr.b td { font-weight: bold; }
+  .tcap { font-size: 9.3pt; margin: 8pt 0 0; break-after: avoid; }
+  .eq { text-align: center; margin: 4pt 0 6pt; font-size: 10.5pt; }
+  ol.refs { font-size: 9.2pt; padding-left: 18pt; text-align: left; }
+  ol.refs li { margin-bottom: 3pt; }
+  .note { font-size: 9.3pt; }
+  code { font: 9pt Consolas, "Courier New", monospace; }
+  a { color: #111; }
+</style>
+</head>
+<body>
+
+<h1>Copy, Recall, or Reason?</h1>
+<div class="sub">Where the accuracy of LLM-based next-POI prediction comes from</div>
+<div class="authors">{{AUTHORS}}</div>
+<div class="affil">CSD358 Information Retrieval, course project &middot; Code: <a href="https://github.com/CipherEnigma/TraceX">github.com/CipherEnigma/TraceX</a></div>
+
+<div class="abs">
+<p><b>Abstract.</b> Several recent papers prompt a language model with a user's check-in history and ask it for the next place the user will visit. They report good accuracy, but each uses its own dataset, split and metric, so it is hard to say what the model is actually contributing. We build one fixed evaluation protocol and use it to separate three possible sources of accuracy: copying places the user has already visited, recalling knowledge about named venues, and reasoning about a place from context alone. We compare a time-aware frequency heuristic with Qwen2.5-7B and Qwen2.5-3B (4-bit) under two prompting styles, on Foursquare NYC, Foursquare TKY and Massive-STEPS Tokyo, and add two diagnostic tests: a split into revisit and new targets, and a test where venue names are shown, removed or replaced by fake aliases. We also implement and compare five retrieval methods (Jaccard, LCS, TF-IDF, BM25 and a hybrid) for picking similar past trajectories. On NYC and TKY the heuristic is better than every model we ran (28.6 against 23.2 on NYC, 20.8 against 16.0 on TKY, Accuracy@1), on the small and sparse Tokyo set the 7B model is better (19.2 against 12.3), no model gets a single new place right at rank 1, and hiding venue names changes nothing we could measure. For these two small models, accuracy is explained almost completely by copying the user's own history.</p>
+</div>
+
+<h2>1. Introduction</h2>
+<p>Next point-of-interest (POI) recommendation asks which place a user will check in at next, given what they visited before. It sits behind map suggestions, trip planners and location-based advertising, and it is an old problem for graph and sequence models. Over the last two years the usual recipe has changed: instead of training a model, people write the user's recent check-ins into a prompt and let a pretrained language model answer [1, 2, 3, 5]. The reported numbers look good, and the natural reading is that the model understands how people move.</p>
+<p>We were not sure that reading is safe. A person's next check-in is very often a place they have been to before, and a counter that ranks places by how often the user visited them needs no language model at all. A prompt that contains the user's history also contains most of the right answers. If the model mostly picks things out of its prompt, calling that reasoning would be generous. A different worry applies when the dataset has venue names: the model may have seen those venues, or even these exact datasets, during pretraining, and may be answering from memory.</p>
+<p>The papers we read do not let a reader separate these explanations. They differ in how a "history" is defined, how the data is split and which metrics are used, and most of them have no cheap non-LLM baseline in the table. Our aim is to supply that missing piece, and not to propose another prediction model.</p>
+<p><b>Contributions.</b></p>
+<ol style="margin-top:0">
+<li>One fixed protocol (chronological split, 24-hour trajectories, a single history definition, leakage checks that fail the build) applied to a heuristic and to two LLM prompting methods on three datasets.</li>
+<li>A time-aware frequency heuristic as an explicit non-LLM floor, with its few settings chosen on the validation split only.</li>
+<li>A revisit-versus-new breakdown of every result, which shows where the accuracy sits.</li>
+<li>A venue-name test with names present, removed and aliased, on Massive-STEPS Tokyo, with the perturbed test sets released.</li>
+<li>An information-retrieval study of five ways to select similar past trajectories (Jaccard, LCS, TF-IDF cosine, BM25, reciprocal-rank-fusion hybrid), scored with Precision, Recall, F1, MAP and MRR, and wired in as the demonstration selector for the LLM.</li>
+<li>Paired bootstrap intervals, McNemar tests and Holm correction on everything, so that the differences we report can be trusted or discounted as appropriate.</li>
+</ol>
+
+<h2>2. Related Work</h2>
+<p><b>LLMs for next-POI prediction.</b> LLM-Mob [2] was one of the first to put mobility records into a prompt. It separates <i>historical stays</i> (long-term habits) from <i>context stays</i> (the current trip) and gives the model the time of the query. LLM4POI [1] takes the other route and fine-tunes a language model on trajectories rendered as text, using time, category and coordinates, and reports clear gains over graph-based baselines on NYC, TKY and CA. RALLM-POI [5] stays zero-shot: it retrieves past trajectories, reranks them by distance, and adds a second pass in which the model checks its own answer; it uses GPT-4o-mini on Foursquare data from Singapore, NYC and Phoenix.</p>
+<p><b>Which examples to show the model.</b> Nishida et al. [3] compare ways of choosing the demonstration trajectories placed in the prompt, including Jaccard and LCS similarity, DTW, geographic proximity and temporal ordering, with models such as Qwen2.5-7B-Instruct and GPT-4o, and with history taken from all users or from the target user only. Our retrieval prompts follow their Jaccard setup, and their published Accuracy@1 ranges are what we compare with in Section 6.6.</p>
+<p><b>Data.</b> NYC and TKY come from the Foursquare collection of Yang et al. [6]; they contain IDs and categories but no venue names. Massive-STEPS [4] builds on Semantic Trails and adds POI names and addresses from Foursquare Open Source Places, covers several cities and two time periods (2012-13 and 2017-18), and includes zero-shot LLM benchmarks.</p>
+<p><b>Retrieval methods.</b> We use standard ranking functions from text retrieval: TF-IDF with cosine similarity [9], BM25 [8], and reciprocal rank fusion for combining rankings [10], applied to POI sequences instead of words.</p>
+<p><b>What is different here.</b> The works above ask how to make LLM prediction more accurate. We ask what the accuracy is made of. We did not find a study that puts a time-aware counting heuristic, a revisit/new split and a name-disguise test into one protocol with paired statistics. The first two follow hints in the literature (some published results already hint that targets absent from the prompt are rarely predicted); the name-disguise test, with consistent per-POI aliases in the same prompts, is as far as we know new for this task. We claim a diagnostic study, not a new model.</p>
+
+<h2>3. Objective</h2>
+<p>The question is how much of an LLM's next-POI accuracy comes from each of three sources: <b>copying</b> (repeating a place from the user's own history, which a counter can do), <b>recall</b> (memorised knowledge about named venues), and <b>reasoning</b> (a place that cannot be read off the history). We want a measurement design that gives each source a test, and a retrieval component that is good enough to be used as the example selector in the LLM prompts. Concretely:</p>
+<ol style="margin-top:0">
+<li>Measure how much of each LLM's score a non-LLM heuristic already explains (E1).</li>
+<li>Measure accuracy separately for revisit and new targets (E2).</li>
+<li>Measure how accuracy changes when venue names are removed or replaced by aliases (E3).</li>
+<li>Compare retrieval methods for selecting similar trajectories, and report their quality with Precision, Recall, F1, MAP and MRR.</li>
+</ol>
+
+<h2>4. Proposed Model</h2>
+<p>TraceX is not a new predictor but an evaluation pipeline. Figure 1 shows how the parts connect. The data stage turns raw check-ins into leakage-checked prediction instances. Each instance goes to three predictors that share the same inputs: the heuristic, an LLM prompted with the user's most recent trajectories (LLM-Mob style), and an LLM prompted with trajectories chosen by a retriever. Their ranked outputs are scored on the same instances.</p>
+<figure>
+{{DIAGRAM}}
+<figcaption><b>Figure 1.</b> The TraceX pipeline. Blue boxes are the data stage, green the information-retrieval stage, orange the LLM stage. The two diagnostic tests (E2, E3) reuse the same predictions, apart from the name conditions in E3.</figcaption>
+</figure>
+
+<h2>5. Methodology</h2>
+<h3>5.1 Task and protocol</h3>
+<p>Check-ins are cleaned (missing fields, invalid coordinates and exact duplicates removed), converted to local time, and filtered as in LLM4POI [1]: POIs with fewer than 10 check-ins and then users with fewer than 10 are dropped for NYC and TKY. Massive-STEPS is too sparse for that (the median POI has one training check-in), so it keeps users with at least 5 check-ins. The data is split chronologically on the global timeline, 80% / 10% / 10% for train / validation / test. A user's check-ins are cut into trajectories wherever there is a gap of 24 hours or more, and a trajectory never crosses a split boundary. Validation and test keep only users and POIs seen in training, and trajectories need at least two check-ins.</p>
+<p>One prediction instance is made per validation or test trajectory: the input is the trajectory without its last check-in (the <i>prefix</i>) and the user's <i>history</i>, and the target is the last check-in. We fix the history to be the user's training trajectories that end before the target trajectory starts, because earlier papers define it differently. A target counts as a <i>revisit</i> if its POI appears in the history or the prefix, and as <i>new</i> otherwise. These labels are used for scoring only. Evaluation uses a fixed random sample of 500 test instances per dataset (seed 42); Massive-STEPS Tokyo has only 334 test instances, so all of them are used. A set of leakage checks runs after preprocessing (28 per dataset) and the build fails if any of them fails; they cover split order, history timing, the target being the last check-in and absent from the prefix, and reproducible samples.</p>
+
+<h3>5.2 Frequency heuristic (non-LLM floor)</h3>
+<p>The heuristic scores every POI the user has visited and ranks them. Each earlier check-in <i>c</i> at POI <i>p</i> contributes a weight that falls with its age and rises if it happened at a similar time of day or on the same weekday as the target:</p>
+<div class="eq"><i>s</i>(<i>p</i>) = &Sigma;<sub><i>c</i>: poi(<i>c</i>) = <i>p</i></sub> 0.5<sup>&Delta;<i>t<sub>c</sub></i> / <i>h</i></sup> &middot; (1 + &alpha; &middot; 1[ |hour<sub><i>c</i></sub> &minus; hour*|<sub>circ</sub> &le; 1 ] + &beta; &middot; 1[ weekday<sub><i>c</i></sub> = weekday* ])</div>
+<p>where &Delta;<i>t<sub>c</sub></i> is the age of the check-in in days measured from the target's time, <i>h</i> is the half-life, and hour* and weekday* are the target's hour and weekday. These are the only target fields the heuristic reads. They are also the only target fields the LLM prompts contain (the prompt says when the next check-in happens), and the target's place, category and name are never used. If fewer than 20 POIs have a score, the list is filled with globally popular POIs. We tried 240 settings of (<i>h</i>, &alpha;, &beta;, window) on 500 validation instances per dataset and kept the one with the best mean reciprocal rank across datasets: <i>h</i> = 90 days, &alpha; = 4, &beta; = 0, window = 1 hour. The weekday term was switched off by the search, so hour of day does the work. On validation, the mean MRR is 0.315 with these settings and 0.289 for the plain visit counter (&alpha; = &beta; = 0, no decay). Both are reported.</p>
+
+<h3>5.3 Retrieval of similar trajectories</h3>
+<p>For an instance, the query is the list of POI IDs in the prefix, and the candidates are the user's history trajectories. A retriever ranks the candidates; ties are broken in favour of the more recent trajectory. Let <i>q</i> be the query and <i>d</i> a candidate, both as POI sequences.</p>
+<div class="eq">Jaccard: &nbsp; <i>J</i>(<i>q</i>, <i>d</i>) = |set(<i>q</i>) &cap; set(<i>d</i>)| / |set(<i>q</i>) &cup; set(<i>d</i>)|</div>
+<div class="eq">LCS: &nbsp; sim(<i>q</i>, <i>d</i>) = LCS(<i>q</i>, <i>d</i>) / max(|<i>q</i>|, |<i>d</i>|)</div>
+<div class="eq">TF-IDF: &nbsp; <i>w</i>(<i>t</i>, <i>d</i>) = tf(<i>t</i>, <i>d</i>) &middot; ( ln((1 + <i>N</i>) / (1 + df(<i>t</i>))) + 1 ), &nbsp; score = cos(<b>w</b><sub><i>q</i></sub>, <b>w</b><sub><i>d</i></sub>)</div>
+<div class="eq">BM25: &nbsp; score(<i>q</i>, <i>d</i>) = &Sigma;<sub><i>t</i> &isin; <i>q</i></sub> idf(<i>t</i>) &middot; tf(<i>t</i>, <i>d</i>)(<i>k</i><sub>1</sub> + 1) / ( tf(<i>t</i>, <i>d</i>) + <i>k</i><sub>1</sub>(1 &minus; <i>b</i> + <i>b</i>|<i>d</i>| / avgdl) ),<br>idf(<i>t</i>) = ln(1 + (<i>N</i> &minus; df(<i>t</i>) + 0.5) / (df(<i>t</i>) + 0.5))</div>
+<div class="eq">Hybrid (reciprocal rank fusion): &nbsp; score(<i>d</i>) = &Sigma;<sub><i>m</i></sub> 1 / (60 + rank<sub><i>m</i></sub>(<i>d</i>)), &nbsp; <i>m</i> &isin; {BM25, LCS, Jaccard}</div>
+<p>Here a "term" is a POI ID and a "document" is a trajectory. Document frequencies are computed on the training trajectories only. We also keep a control called <i>recent</i>, which just returns the most recent trajectories and uses no similarity, so that we can tell whether similarity adds anything. BM25's <i>k</i><sub>1</sub> and <i>b</i> were tuned on validation (Section 6.3).</p>
+<p>The retrieval stage is scored in two ways. For <b>retrieval quality</b>, a candidate trajectory counts as relevant if it contains the target POI; this uses the target, for scoring only. We report Precision@K, Recall@K, F1@K, mean average precision (MAP) and mean reciprocal rank (MRR). Instances where no candidate is relevant (the target is new, or only in the prefix) cannot be scored, so they are left out and the share that remains is reported as <i>coverage</i>. For <b>next-POI prediction</b>, a vote baseline ranks POIs by the similarity-weighted count of POIs in the top-3 retrieved trajectories, which isolates the retrieval step from the LLM.</p>
+
+<h3>5.4 LLM prompting</h3>
+<p>We use Qwen2.5-7B-Instruct and Qwen2.5-3B-Instruct [7] in 4-bit NF4 quantisation [11] on one Kaggle T4 GPU, with greedy decoding (temperature 0) and a repetition penalty of 1.0 (the model's default of 1.05 would push it away from IDs that are in the prompt and bias the very copying we want to measure). Every check-in is written as one line, for example <code>2013-01-02 12:39 Wednesday | POI 481 | Department Store</code>, with the venue name added on Massive-STEPS when names are shown. The model must return JSON with ten ranked POI IDs. Two prompts are compared. <b>LLM-Mob</b> [2] shows the 40 most recent history check-ins, grouped by trajectory, and the current trajectory. <b>Retrieval</b> shows five demonstration trajectories chosen by Jaccard similarity [3], each ending with its next check-in, followed by the current trajectory. Invalid or unparseable answers are kept as misses; we do not pad them with heuristic guesses.</p>
+<p>For E3, Massive-STEPS Tokyo is run three times on the same 334 instances: names present, names removed, and names replaced by aliases. An alias is a random katakana pseudo-word assigned once per POI ID (so two branches of a chain get different aliases), with a length similar to the real names. History, targets, IDs, categories and times are identical across the three conditions, and we checked that the prompts differ only in the name spans.</p>
+
+<h3>5.5 Metrics and statistics</h3>
+<p>For a ranked list and a target, Accuracy@<i>K</i> is 1 if the target is in the top <i>K</i>, MRR is 1/rank (0 if absent), and NDCG@<i>K</i> = DCG@<i>K</i>/IDCG@<i>K</i> with a single relevant item. For the retrieval study, with <i>R</i> the set of relevant candidates and <i>k</i> the cut-off:</p>
+<div class="eq">P@<i>k</i> = |top-<i>k</i> &cap; <i>R</i>| / <i>k</i>, &nbsp; R@<i>k</i> = |top-<i>k</i> &cap; <i>R</i>| / |<i>R</i>|, &nbsp; F1@<i>k</i> = 2 &middot; P@<i>k</i> &middot; R@<i>k</i> / (P@<i>k</i> + R@<i>k</i>), &nbsp; AP = (1/|<i>R</i>|) &Sigma;<sub><i>i</i></sub> P@<i>i</i> &middot; 1[item <i>i</i> relevant]</div>
+<p>P@<i>k</i> divides by <i>k</i> even when a user has fewer than <i>k</i> candidates, so it is conservative for users with short histories. We also report two behaviour rates: the <i>copy rate</i> (the top-1 prediction is a POI from the history or prefix) and the <i>invalid rate</i> (no usable top-1 POI). All methods see the same instances, so differences are paired: we use 95% percentile bootstrap intervals (10,000 resamples), McNemar's test [12] on Accuracy@1, and Holm's correction [13] within each table.</p>
+
+<h2>6. Experimentation and Results</h2>
+<h3>6.1 Datasets</h3>
+<p>Table 1 summarises the three datasets after processing. The two Foursquare sets cover the same ten months of 2012-13 and are used for E1 and E2. Massive-STEPS Tokyo covers 2017-18, has a name and address for every POI, and is used for E3. It is much smaller and sparser than the other two (median 10 check-ins per user, median trajectory length 2), and only 47% of its test targets are revisits, against about 74% for NYC and TKY. Its numbers are therefore not directly comparable with the other two. For NYC and TKY our filter stage reproduces the published check-in counts (147,938 and 447,570) exactly; the final user and POI counts match within 0.1% for TKY and are about 2% higher for NYC, which we put down to a difference in how the reference code prunes trajectories.</p>
+<div class="tcap"><b>Table 1.</b> Processed datasets and evaluation samples.</div>
+{{TABLE_DATA}}
+<div class="pair">
+<figure><img src="figures/revisit_vs_new.png" alt=""><figcaption><b>Figure 2.</b> Share of test targets that are revisits and new places, by dataset.</figcaption></figure>
+<figure><img src="figures/trajectory_length.png" alt=""><figcaption><b>Figure 3.</b> Trajectory length distribution. Massive-STEPS trajectories are short.</figcaption></figure>
+</div>
+<div class="pair">
+<figure><img src="figures/hour_of_day.png" alt=""><figcaption><b>Figure 4.</b> Check-ins by hour of day. The daily rhythm is what the heuristic's hour term picks up.</figcaption></figure>
+<figure><img src="figures/poi_popularity_longtail.png" alt=""><figcaption><b>Figure 5.</b> POI popularity in training. Massive-STEPS has a very long tail (88% of POIs have five or fewer training check-ins).</figcaption></figure>
+</div>
+
+<h3>6.2 Retrieval quality</h3>
+<p>Tables 2 to 4 compare the retrieval methods on the 500-instance samples. Coverage (the share of instances with at least one relevant candidate) is 76% on NYC, 70% on TKY and 45% on Tokyo; the rest cannot be scored. BM25 is the best method on every dataset in P@1, F1@3, MAP and MRR. On NYC its MAP is 0.689 against 0.617 for the no-similarity control and 0.645 for Jaccard. On TKY the gain over the control is larger (0.610 against 0.514), which makes sense because TKY users have longer histories (median 121 history check-ins against 74) and so more candidates to choose between. On NYC the control is already strong, because a user's most recent trips are often the relevant ones. LCS, which respects order, does not beat the order-free Jaccard, and the hybrid did not beat BM25 on its own.</p>
+{{TABLES_RETRIEVAL}}
+<div class="pair">
+<figure><img src="figures/nyc_retrieval.png" alt=""><figcaption><b>Figure 6.</b> NYC retrieval quality.</figcaption></figure>
+<figure><img src="figures/tky_retrieval.png" alt=""><figcaption><b>Figure 7.</b> TKY retrieval quality.</figcaption></figure>
+</div>
+<figure style="width:62%;margin-left:auto;margin-right:auto"><img src="figures/msteps_tokyo_retrieval.png" alt=""><figcaption><b>Figure 8.</b> Massive-STEPS Tokyo retrieval quality.</figcaption></figure>
+
+<h3>6.3 Choosing settings on the validation split</h3>
+<p>Retrieval settings were chosen on 500 validation instances per dataset, never on test. The best BM25 setting had <i>b</i> = 0, which means no document-length normalisation, and <i>k</i><sub>1</sub> hardly mattered. That is plausible here, because a trajectory with many check-ins is not padded with irrelevant words the way a long web page is. Table 5 shows how MAP falls as length normalisation increases. The tuned setting also beats the usual default (<i>k</i><sub>1</sub> = 1.5, <i>b</i> = 0.75) on the test sample, from 0.663 to 0.689 MAP on NYC and from 0.584 to 0.610 on TKY.</p>
+{{TABLE_VAL}}
+
+<h3>6.4 E1: does the LLM beat a counter?</h3>
+<p>Table 6 and Figure 9 give the main comparison. Retrieval-prompt runs use Jaccard demonstrations (Section 5.4). On NYC and TKY the time-aware heuristic is better than every LLM run, and the difference is statistically significant for LLM-Mob 7B on both datasets (&minus;5.4 points, <i>p</i> = 0.035 on NYC; &minus;4.8 points, <i>p</i> = 0.021 on TKY). It also outperforms the plain visit counter, by 6.8 points on NYC and 1.6 on TKY. On Massive-STEPS Tokyo the picture reverses: the heuristic is worse than the plain counter (12.3 against 16.8), because we tuned its settings jointly on the three datasets and Tokyo, with very short histories, does not share their preferences, and the 7B model beats it by 6.9 points (<i>p</i> = 0.015). The 7B model is better than the 3B model in every setting; the gap is significant for LLM-Mob on NYC and Tokyo and for retrieval on NYC (Table 9). Retrieved demonstrations did not help: on 7B, the two prompting styles are within about one point of each other everywhere, and the retrieval prompt is lower at Accuracy@5, partly because it often shows only two to five distinct POIs and so cannot list ten different answers.</p>
+<div class="tcap"><b>Table 6.</b> E1 results (%; MRR and NDCG as fractions; 95% bootstrap interval shown for Acc@1). &Delta; is the difference in Acc@1 from the time-aware heuristic, <i>p</i> is McNemar with Holm correction. The plain counter is shown for reference.</div>
+{{TABLE_E1}}
+<figure><img src="figures/e1_heuristic_floor.png" alt="" style="width:92%"><figcaption><b>Figure 9.</b> E1. Accuracy@1 (top) and Accuracy@5 (bottom) of each model and prompt against the time-aware heuristic. The dashed line and shaded band are the heuristic's value and 95% interval. Error bars are 95% bootstrap intervals.</figcaption></figure>
+
+<h3>6.5 E2 and E3: revisit versus new, and the name test</h3>
+<p><b>Revisit versus new.</b> Table 7 and Figure 10 split Accuracy@1 by target type. For new targets every LLM run scores 0.0%, on all three datasets. The heuristic also scores 0.0% on new targets at rank 1. So the models' entire score comes from revisits, where the heuristic is stronger on NYC and TKY (for instance 36.6% against 29.7% for LLM-Mob 7B on NYC) and weaker on Tokyo (25.9% against 40.5%). The new-place result should be read with a caveat that belongs to the setup and not only to the models: the prompt contains only anonymous POI IDs that appeared in the user's own trajectories, and no list of candidates. A place the user has never visited has an ID the model has never been shown, so naming it would be a guess among several thousand integers. The 0% shows that this protocol cannot reward new-place predictions; it does not show that a model with more to go on could not make them.</p>
+<div class="tcap"><b>Table 7.</b> E2: Accuracy@1 (%) on revisit and new targets. &Delta; is relative to the heuristic on the same targets.</div>
+{{TABLE_E2}}
+<figure><img src="figures/e2_revisit_new.png" alt="" style="width:92%"><figcaption><b>Figure 10.</b> E2. Accuracy@1 for revisit and new targets, by dataset, model and prompt.</figcaption></figure>
+<p><b>Name test.</b> Table 8 and Figure 11 show Massive-STEPS Tokyo with names present, removed and aliased. For Qwen2.5-7B with LLM-Mob, Accuracy@1 is 19.2% with real names, 20.1% with names removed and 20.4% with aliases. All pairwise differences have intervals that include zero, and every adjusted <i>p</i>-value is 1.0. We see no sign that these models rely on venue names. With 334 instances the intervals are about &plusmn;4 points wide, so a smaller effect could be hiding. Also, aliasing keeps the categories, IDs and visit pattern, so a model could still identify a place from those; the test measures reliance on names, not whether the data was memorised.</p>
+<div class="tcap"><b>Table 8.</b> E3: Massive-STEPS Tokyo with venue names present, removed or aliased (n = 334). Copy is the copy rate (%).</div>
+{{TABLE_E3}}
+<figure><img src="figures/e3_name_test.png" alt="" style="width:80%"><figcaption><b>Figure 11.</b> E3. Accuracy under the three name conditions.</figcaption></figure>
+
+<h3>6.6 Model size, behaviour, and comparison with published results</h3>
+<p><b>Size.</b> Going from 3B to 7B adds 3.6 to 8.1 points of Accuracy@1 on NYC and Tokyo (significant for LLM-Mob in every condition, and for retrieval on NYC), and 2.4 points on TKY (not significant).</p>
+<div class="tcap"><b>Table 9.</b> Qwen2.5-7B minus Qwen2.5-3B, Accuracy@1 (points).</div>
+{{TABLE_SIZE}}
+<p><b>Behaviour.</b> Figure 12 shows how often each run copies and how often it fails to give a usable answer. Between 90% and 100% of top-1 predictions are places from the user's own history or current trajectory, and the invalid rate is close to zero (at most 0.3%), so the accuracy differences above are not caused by parsing failures. The lowest copy rates (about 90%) are the 3B retrieval runs on Tokyo.</p>
+<figure><img src="figures/behaviour.png" alt="" style="width:88%"><figcaption><b>Figure 12.</b> Copy rate and invalid rate of each run.</figcaption></figure>
+<p><b>Non-LLM next-POI baselines.</b> Table 10 gives the retrieval vote baselines next to the two counters (Accuracy@1 and @5, MRR and NDCG@5 over a 20-item list). On NYC and TKY, voting over retrieved trajectories is not better than counting: on NYC the time-aware heuristic reaches 28.6% Accuracy@1 against 21.0&ndash;24.2% for the vote variants, and on TKY 20.8% against 16.0&ndash;16.8%. On Tokyo it is the other way round. The vote baselines (17.7&ndash;18.9%) are above both counters and close to the 7B model's 19.2%, so on that sparse dataset a retrieval vote with no LLM does about as well as the LLM.</p>
+<div class="tcap"><b>Table 10.</b> Non-LLM baselines on the evaluation samples (vote baselines use the top-3 retrieved trajectories).</div>
+{{TABLE_BASE}}
+<div class="pair">
+<figure><img src="figures/nyc_baselines.png" alt=""><figcaption><b>Figure 13.</b> NYC baselines.</figcaption></figure>
+<figure><img src="figures/tky_baselines.png" alt=""><figcaption><b>Figure 14.</b> TKY baselines.</figcaption></figure>
+</div>
+<p><b>Comparison with the published setup.</b> Nishida et al. [3] report Accuracy@1 for Qwen2.5-7B with 5 to 30 demonstrations from the user's history of 0.18&ndash;0.23 on NYC and 0.16&ndash;0.19 on TKY, and 0.32&ndash;0.36 and 0.24&ndash;0.30 for GPT-4o with the same prompts; they list fine-tuned LLM4POI [1] at 0.337 and 0.304. We took these figures from our project brief, which read them from that paper, so they should be checked against the paper before this report is submitted. Our Qwen2.5-7B runs give 0.228&ndash;0.232 on NYC and 0.160&ndash;0.170 on TKY, inside the published ranges (the NYC values are at the top of the range), so our pipeline reproduces the published level of accuracy. The splits and samples differ, so the match is approximate. The comparison also puts our heuristic in context: on NYC a counter reaches 0.286, above the published 7B range, although the heuristic is not a like-for-like competitor because the splits differ. We did not run a larger model, so we cannot say if the pattern holds for GPT-4o or for a fine-tuned model such as LLM4POI.</p>
+
+<h3>6.7 Discussion</h3>
+<p>Read together, the experiments give a consistent picture for these two models. (1) A counter that knows the user's history, the hour and the recency matches or beats the models on the two large datasets. (2) None of the accuracy is on places the user has not been to. (3) Taking away venue names costs nothing measurable. (4) The models copy: 90&ndash;100% of their first guesses come from the user's own prompt. We would not describe this as reasoning about where people go, nor as recall of venue knowledge. It looks like picking a recent or frequent place out of the context, which a counter does as well or better.</p>
+<p>Two results do not fit that story neatly. On Tokyo the 7B model beats the heuristic, which suggests that where the history is short and sparse the model's use of the sequence and the time stamp helps, or that our heuristic was tuned for the wrong regime. And the 7B model is clearly better than the 3B model, so scale does matter at this size. Whether it matters enough to change the conclusion at GPT-4o scale is the main open question.</p>
+<p>On retrieval, BM25 selects relevant history trajectories better than Jaccard, LCS and TF-IDF, and the gap is larger when users have long histories. We did not re-run the LLM with BM25 demonstrations (the runs use Jaccard, following [3]), so we do not know whether better retrieval would change the LLM numbers. The vote baselines suggest the effect would be small on NYC and TKY, where retrieval votes do not beat counting, though on Tokyo the votes are competitive with the LLM.</p>
+
+<h2>7. Conclusions and Limitations</h2>
+<p><b>Conclusions.</b> Under one leakage-checked protocol, Qwen2.5-3B and 7B behave mostly as copy-and-recency predictors. On NYC and TKY a time-aware frequency counter is more accurate than either model with either prompt. All of the models' accuracy is on revisit targets, none on new ones, and hiding or aliasing venue names has no measurable effect on Massive-STEPS Tokyo. Among the five retrieval methods, BM25 selects the most relevant past trajectories on all three datasets. The contribution is the measurement design, the heuristic floor, the retrieval comparison and the released perturbed test sets, together with code that reruns everything.</p>
+<p><b>Limitations.</b></p>
+<ul style="margin-top:0">
+<li>Only two small open models, in 4-bit, with greedy decoding were run. The conclusions are about these models; larger or fine-tuned models might behave differently.</li>
+<li>The 0% on new places is partly built into the task: prompts contain only anonymous IDs seen in the user's own history and no candidate list. A design with names, coordinates and a candidate list that includes new places would be a fairer test of reasoning.</li>
+<li>The name test measures reliance on names only. NYC and TKY have no names, the datasets are old and public so contamination cannot be ruled out, and with 334 instances small effects are not excluded.</li>
+<li>The heuristic's settings were chosen jointly on three datasets and do not suit Tokyo; a per-dataset choice could change the Tokyo comparison. The hour weight ended at the edge of the search grid, so a wider search might find slightly better settings.</li>
+<li>Retrieval quality is scored by whether a trajectory contains the target POI, which is a proxy, and instances with no such trajectory are excluded (coverage 45&ndash;76%). We report no confidence intervals for the retrieval metrics, and the LLM runs use Jaccard, not the better BM25.</li>
+<li>Samples of 500 instances give intervals of about &plusmn;4 points. The published numbers used for comparison were taken from the project brief and use different splits.</li>
+<li>4-bit quantisation and batched fp16 decoding may differ slightly from full-precision, batch-1 runs. Massive-STEPS inherits the biases of its source data and its authors note it may not reflect present-day mobility.</li>
+</ul>
+<p><b>Reproducibility.</b> <code>python -m tracex_data all</code> rebuilds the data; <code>python -m tracex_ir.evaluate</code> reproduces the retrieval and baseline tables; <code>python -m tracex_llm.evaluate</code> reproduces the LLM tables from the saved runs; the dashboard is started with <code>streamlit run app/dashboard.py</code>. Every LLM run is stored with its settings, GPU and library versions.</p>
+
+<h2>References</h2>
+<ol class="refs">
+<li>Li, P., de Rijke, M., Xue, H., Ao, S., Song, Y. and Salim, F.D., 2024, July. Large language models for next point-of-interest recommendation. In Proceedings of the 47th International ACM SIGIR Conference on Research and Development in Information Retrieval (pp. 1463&ndash;1472).</li>
+<li>Wang, X., Fang, M., Zeng, Z. and Cheng, T., 2023. Where would I go next? Large language models as human mobility predictors. arXiv preprint arXiv:2308.15197.</li>
+<li>Nishida, R., Kawarada, M., Ishigaki, T., Takamura, H. and Onishi, M., 2026. A comparative study of demonstration selection for practical large language models-based next POI prediction. arXiv preprint arXiv:2604.06207.</li>
+<li>Wongso, W., Xue, H. and Salim, F.D., 2025. Massive-STEPS: Massive semantic trajectories for understanding POI check-ins, dataset and benchmarks. arXiv preprint arXiv:2505.11239.</li>
+<li>Li, K. and Lim, K.H., 2025. RALLM-POI: Retrieval-augmented LLM for zero-shot next POI recommendation with geographical reranking. arXiv preprint arXiv:2509.17066.</li>
+<li>Yang, D., Zhang, D., Zheng, V.W. and Yu, Z., 2015. Modeling user activity preference by leveraging user spatial temporal characteristics in LBSNs. IEEE Transactions on Systems, Man, and Cybernetics: Systems, 45(1), pp. 129&ndash;142.</li>
+<li>Qwen Team, 2024. Qwen2.5 technical report. arXiv preprint arXiv:2412.15115.</li>
+<li>Robertson, S. and Zaragoza, H., 2009. The probabilistic relevance framework: BM25 and beyond. Foundations and Trends in Information Retrieval, 3(4), pp. 333&ndash;389.</li>
+<li>Salton, G. and Buckley, C., 1988. Term-weighting approaches in automatic text retrieval. Information Processing &amp; Management, 24(5), pp. 513&ndash;523.</li>
+<li>Cormack, G.V., Clarke, C.L.A. and Buettcher, S., 2009, July. Reciprocal rank fusion outperforms Condorcet and individual rank learning methods. In Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Information Retrieval (pp. 758&ndash;759).</li>
+<li>Dettmers, T., Pagnoni, A., Holtzman, A. and Zettlemoyer, L., 2023. QLoRA: Efficient finetuning of quantized LLMs. In Advances in Neural Information Processing Systems 36.</li>
+<li>McNemar, Q., 1947. Note on the sampling error of the difference between correlated proportions or percentages. Psychometrika, 12(2), pp. 153&ndash;157.</li>
+<li>Holm, S., 1979. A simple sequentially rejective multiple test procedure. Scandinavian Journal of Statistics, 6(2), pp. 65&ndash;70.</li>
+</ol>
+
+</body>
+</html>

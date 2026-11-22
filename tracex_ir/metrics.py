@@ -12,6 +12,11 @@ def recall_at_k(ranked, relevant, k):
     return sum(1 for r in ranked[:k] if r in relevant) / len(relevant) if relevant else 0.0
 
 
+def f1_at_k(ranked, relevant, k):
+    p, r = precision_at_k(ranked, relevant, k), recall_at_k(ranked, relevant, k)
+    return 2 * p * r / (p + r) if p + r else 0.0
+
+
 def average_precision(ranked, relevant):
     hits, total = 0, 0.0
     for i, r in enumerate(ranked, 1):
@@ -36,3 +41,7 @@ def ndcg_at_k(ranked, relevant, k):
     dcg = sum(1 / math.log2(i + 1) for i, r in enumerate(ranked[:k], 1) if r in relevant)
     ideal = sum(1 / math.log2(i + 1) for i in range(1, min(len(relevant), k) + 1))
     return dcg / ideal if ideal else 0.0
+
+
+def category_accuracy_at_k(ranked_cats: list[str | None], target_cat: str, k: int) -> float:
+    return float(target_cat in [c for c in ranked_cats[:k] if c is not None])
