@@ -230,47 +230,60 @@ evaluated for accuracy (they are popularity-based options, not predictions); the
 
 ---
 
-## 8. Report formats the dashboard reads (Members 1 and 2: write exactly these)
+## 8. Report formats the dashboard reads (as produced; updated after integration)
 
 All rates are fractions (0-1), like `reports/llm/evaluation.json`. A metric with a 95% bootstrap CI is
-`{"mean": 0.286, "lo": 0.246, "hi": 0.326, "n": 500}`; a paired difference is `{"diff": -0.044, "lo": -0.08, "hi": -0.01}`.
-The dashboard shows each section as soon as the file exists (E1 page and Runs & behaviour page) and a short note
-until then.
+`{"mean": 0.286, "lo": 0.246, "hi": 0.326, "n": 500}`; a paired difference is
+`{"diff": -0.024, "lo": -0.066, "hi": 0.018, "p": 0.28, "n": 500}`. Each dashboard section appears as soon as its file
+exists and shows a short note until then. Keep these keys stable; adding keys is fine.
 
-**Member 2: `reports/assistant/results.json`** (from `python -m tracex_assist.evaluate`)
+**Member 1: `reports/assistant/copy_analysis.json`** (`python -m tracex_assist.analysis_copy`), read by the
+"What the LLM copies" table on Runs & behaviour (`app/views/runs.py`)
 
 ```json
-{"sample": "sample_test_500",
+{"sample": "sample_test_500", "n_boot": 10000, "alpha": 0.05,
+ "rules": {"heuristic": "Time-aware heuristic", "counter": "Visit counter", "last": "Last place",
+           "markov": "Markov", "trip": "Current trip", "any_rule": "Any of these"},
  "datasets": {
-  "nyc": {
-   "n": 500,
-   "methods": {
-    "frequency": {"label": "Time-aware heuristic", "acc1": {...}, "acc5": {...}, "mrr": {...}, "ndcg5": {...},
-                  "vs_frequency": null},
-    "markov":    {"label": "Markov (last place -> next)", "acc1": {...}, "acc5": {...}, "mrr": {...}, "ndcg5": {...},
-                  "vs_frequency": {"acc1": {"diff": ..., "lo": ..., "hi": ...}, "p_holm": 0.03}},
-    "recency":   {...},
-    "engine":    {"label": "Assistant engine (RRF)", ...},
-    "engine+qwen7b-llmmob": {"label": "Engine + Qwen-7B LLM-Mob (RRF)", "exploratory": true, ...}
-   },
-   "category": {"frequency": {"label": "Time-aware heuristic", "acc1": {...}, "acc5": {...}},
-                "engine":    {"label": "Assistant engine", "acc1": {...}, "acc5": {...}}}
-  },
-  "tky": {...}, "msteps_tokyo": {...}}}
+  "nyc": {"n": 500,
+          "truth": {"heuristic": {mean, lo, hi, n}, "counter": {...}, "last": {...}, "markov": {...},
+                    "trip": {...}, "any_rule": {...}},
+          "random_place": {"heuristic": 0.06, ...}, "markov_coverage": 0.716, "counters": {...}}},
+ "runs": {
+  "nyc__qwen7b__llmmob__none__sample_test_500": {
+    "dataset": "nyc", "model": "qwen7b", "method": "llmmob", "condition": "none", "main": true, "n": 500,
+    "complete": true, "acc1": 0.232, "new_hits": {"hits": 0, "n": 109},
+    "match":   {"heuristic": {mean, lo, hi, n}, "counter": ..., "last": ..., "markov": ..., "trip": ..., "any_rule": ...},
+    "excess":  {"<rule>": {diff, lo, hi, p, n}},
+    "outside": {"other_own": 0.178, "never_seen": 0.0, "invalid": 0.0},
+    "ties": {...}, "disagree": {...}, "vs": {"<comparator>": {"<slice>": {...}}}}}}
 ```
 
-Rows appear in the order written; `"exploratory": true` adds a *post hoc* tag. `confidence` in `Evidence` should use
-the `engine` row's Acc@1/Acc@5 for that dataset (`{"acc1": 0.29, "acc5": 0.61, "n": 500}`).
+The page uses, per run with `"main": true` (Massive-STEPS: names present), `match.<rule>.mean` (95% CI on hover) and
+`outside.never_seen`, plus `datasets.<ds>.truth.<rule>` as the *Actual next place* reference row.
 
-**Member 1: `reports/assistant/copy_analysis.json`** (from `python -m tracex_assist.analysis_copy`)
+**Member 2: `reports/assistant/results.json`** (`python -m tracex_assist.evaluate`), read by the "Stronger
+baselines and the assistant engine" section on E1 (`app/views/e1.py`) and by `evidence._offline_confidence`
 
 ```json
-{"runs": [
-  {"dataset": "nyc", "model": "qwen7b", "method": "llmmob", "n": 500,
-   "same_as_frequency": 0.47, "same_as_markov": 0.39, "same_as_last_place": 0.12, "in_current_trip": 0.30}
-]}
+{"sample": "sample_test_500", "n_boot": 10000,
+ "methods": {"frequency": {"nyc": {"dataset": "nyc", "n": 500, "acc1": {mean, lo, hi, n}, "acc5": ..., "mrr": ...,
+                                   "ndcg5": ..., "cat_acc1": ..., "cat_acc5": ..., "revisit": {...}, "new": {...}},
+                           "tky": {...}, "msteps_tokyo": {...}},
+             "markov": {...}, "recency": {...}, "engine": {...}, "llm_fusion": {...}},
+ "engine": {"nyc": {"acc1": 0.292, "acc5": 0.624, "n": 500}},
+ "comparisons": [{"dataset": "nyc", "method": "markov", "n": 500, "acc1": {diff, lo, hi, p, n}, "acc5": ...,
+                  "mcnemar_acc1": {"a_only": 51, "b_only": 63, "p": 0.30, "test": "chi2-cc", "p_holm": 1.0}}]}
 ```
 
-One entry per saved LLM run (`method` is `llmmob` or `retrieval-jaccard`; Massive-STEPS uses the `present` names
-condition). Each share = fraction of instances whose LLM top-1 equals that rule's top-1. Put the "where the LLM beats
-the counter" breakdown in `copy_analysis.md` for the paper.
+Rows appear in the order of `methods`; `llm_fusion` is tagged *post hoc*. The page always adds the time-aware
+heuristic (the E1 baseline, from `tracex_llm.evaluate`) as the first row. Optional `"comparator": "heuristic"` at the
+top level names what `comparisons` are measured against (default: `frequency`, shown as "visit counter").
+
+**Open items for Member 2** (found at integration): (1) compare against the time-aware heuristic
+(`tracex_ir.baselines.frequency_baseline`, the E1 baseline) rather than the plain counter, and set
+`"comparator": "heuristic"`; (2) build profiles with `from .api import build_profile, place_index`, not `.stub`.
+
+**Demo personas** (`profile.demo_users()[i]["persona"]`, Member 1): `from_poi → to_poi` happened `count` of `total`
+times **across all days**; `weekday`/`hour` are one example moment when it happened (used by *Load this routine*),
+not the usual time.

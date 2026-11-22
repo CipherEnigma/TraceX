@@ -159,11 +159,12 @@ explains**. Member 1's profile and Member 2's evidence engine produce an `Eviden
 
 | Step | What it does |
 |---|---|
-| Intent | `parse_intent(question)` → `want_new` ("somewhere new", "haven't tried") and `want_kind` (food, coffee, drinks, shopping, outdoors, transport), set in the `Context` **before** evidence is gathered |
+| Intent | `parse_intent(question)` → `want_new` ("somewhere new", "haven't tried") and `want_kind` (food, coffee, drinks, shopping, outdoors, transport), set in the `Context` **before** evidence is gathered. Phrases about where the user is or comes from ("just left the bar", "got off the train") are ignored, and a requested kind narrows the known places shown to the model to that kind (new places of that kind if none) |
 | View | `evidence_view(ev, places)`: readable place labels ("Coffee Shop #345", or the real Tokyo name) and every number pre-written as text ("you went there next 11 of 20 times (55%)"). New places are included only when asked for. This view is the only thing the model sees |
 | Prompt | 11 rules: use only the evidence, copy numbers exactly, never call a known place new, no facts or opinions not in the evidence, at most 120 words |
 | Model | `qwen2.5:3b` through a local [Ollama](https://ollama.com) server (`/api/chat`, temperature 0.2), standard library only; nothing leaves the laptop |
 | Validator | Every `#id`, percentage, "N of M" count and distance in the answer must occur in the view, and a distance must sit in the same sentence as the place it belongs to (by `#id` or name) |
+| Filler | `strip_filler()` drops sentences that are only sales talk ("You will enjoy it."), which the 3B model sometimes adds despite the rules |
 | Retry / fallback | One retry with the problems listed, then `fallback_answer()`: a template built from the same evidence (also used when Ollama is not running), itself checked by the validator in the tests |
 
 Measured on 50 varied questions (2 datasets × 5 users × 5 question types, RTX 4050 laptop): 94% of answers accepted

@@ -259,8 +259,13 @@ distance that is not in the evidence (or puts a distance next to the wrong place
 retry, and after that the template answer is shown. In a test of 50 varied questions, 94% of answers passed on the
 first try, 98% after the retry, and 2% fell back to the template.
 
-**Good things to try in a demo:** a habit ("Where should I go next?"), something new ("Somewhere new to eat?"),
-Massive-STEPS Tokyo for real venue names, and a quiet time of week to see the thin-evidence warning.
+**Good things to try in a demo:** pick a ★ user and click **Load this routine**, then "Where should I go next?";
+something new ("Somewhere new to eat?"); Massive-STEPS Tokyo for real venue names; and a quiet time of week to see
+the thin-evidence warning.
+
+**When presenting a routine:** the banner's count (e.g. "11 of 12") is across all days, and the day and time it
+loads are just one example moment. The answer may quote a narrower, more specific count for that moment (e.g. "4 of
+4 on Friday mornings"). Both are correct: the engine uses the most specific evidence it has.
 
 **Data limits:** NYC and TKY have no venue names (places are shown as "Coffee Shop #345"); Massive-STEPS Tokyo has
 real names but short histories. Suggestions of new places are popularity-based options, not predictions.
