@@ -14,7 +14,7 @@ import numpy as np
 
 from tracex_data.api import load_dataset
 
-from .contract import (Context, Evidence, Explore, Fact, Place, Profile, Suggestion, Visit, WEEKDAYS, routine_key,
+from .contract import (Context, Evidence, Explore, Fact, Place, Profile, Suggestion, Visit, WEEKDAYS, category_matches, routine_key,
                        time_bucket)
 
 STUB = True
@@ -111,11 +111,15 @@ def gather(profile: Profile, context: Context, places) -> Evidence:
     explore = []
     if context.current_poi is not None:
         here = places.get(context.current_poi)
-        want = cats[0][0] if cats else (places.get(habits[0].poi_id).category if habits else here.category)
+        want = None if context.want_kind else (cats[0][0] if cats else
+                                               (places.get(habits[0].poi_id).category if habits else here.category))
         seen = set(freq)
-        for p, km in places.nearby(here.lat, here.lon, 2.0, want):
-            if p.poi_id not in seen:
-                explore.append(Explore(p.poi_id, round(km, 2), p.popularity, p.category))
+        for radius in (1.0, 2.0, 5.0):  # widen until something unvisited turns up
+            explore = [Explore(p.poi_id, round(km, 2), p.popularity, p.category)
+                       for p, km in places.nearby(here.lat, here.lon, radius, want)
+                       if p.poi_id not in seen and category_matches(context.want_kind, p.category)]
+            if explore:
+                break
         explore = sorted(explore, key=lambda e: -e.popularity)[:5]
     return Evidence(context, habits[:5], cats, explore, facts, {"acc1": None, "acc5": None, "n": 0, "stub": True},
                     thin=(n_after or len(visits)) < 5)

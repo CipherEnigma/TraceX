@@ -25,6 +25,30 @@ WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 TIME_BUCKETS = {"morning": (5, 11), "midday": (11, 14), "afternoon": (14, 17), "evening": (17, 21), "night": (21, 5)}
 
 
+# Kinds of place a question can ask for ("somewhere to eat"), matched against category names of both datasets.
+KINDS = {
+    "food": r"restaurant|food|burger|pizza|sushi|ramen|noodle|diner|deli|bodega|bakery|sandwich|steakhouse|bbq|"
+            r"taco|burrito|fried chicken|wings|donut|dessert|ice cream|snack|udon|soba|curry|izakaya|yakitori|"
+            r"tonkatsu|gyudon|bento|dumpling|bagel|breakfast|salad|cupcake|candy|chocolate",
+    "coffee": r"coffee|^caf[eé]$|tea room|tea house",
+    "drinks": r"\bbar\b|pub|brewery|beer|wine|cocktail|lounge|nightclub|night club|sake",
+    "shopping": r"store|shop|mall|market|boutique|supermarket|grocery|convenience|department",
+    "outdoors": r"\bpark\b|(?<!beer )garden|beach|trail|river|lake|playground|scenic|outdoors|harbor|pier",
+    "transport": r"train station|subway|bus station|bus stop|airport|ferry|light rail|metro|platform|^station$",
+}
+
+
+def category_matches(kind: str | None, category: str) -> bool:
+    """True if `category` is of the requested kind (always True when no kind is requested)."""
+    import re
+    if kind is None:
+        return True
+    hit = bool(re.search(KINDS[kind], category, re.I))
+    if kind == "shopping":  # "Coffee Shop", "Donut Shop" are food or coffee, not shopping
+        hit = hit and not re.search(KINDS["food"] + "|" + KINDS["coffee"], category, re.I)
+    return hit
+
+
 def time_bucket(hour: int) -> str:
     for name, (a, b) in TIME_BUCKETS.items():
         if (a <= hour < b) if a < b else (hour >= a or hour < b):
@@ -87,6 +111,8 @@ class Context:
     hour: int
     current_poi: int | None  # where the user is now
     want_new: bool = False  # "suggest something new"
+    want_kind: str | None = None  # a key of KINDS ("food", ...) if the question asks for a kind of place;
+    # gather() should restrict `explore` (and may re-rank `habits`) with category_matches(want_kind, category)
 
 
 @dataclass
