@@ -31,7 +31,7 @@ def evaluate(dataset, sample="sample_test_500", ks=(1, 3, 5), top_k=3, methods=M
     insts = ds.instances(sample)
     retr = {}
     for m in methods:
-        retr[m] = {f"{n}@{k}": [] for n in ("P", "R") for k in ks}
+        retr[m] = {f"{n}@{k}": [] for n in ("P", "R", "F1") for k in ks}
         retr[m].update({"MAP": [], "MRR": []})
     pred = {name: {"acc1": [], "acc5": [], "mrr": [], "ndcg5": [], "revisit": []}
             for name in ["frequency", "plain_frequency"] + [f"{m}_vote" for m in methods]}
@@ -48,6 +48,7 @@ def evaluate(dataset, sample="sample_test_500", ks=(1, 3, 5), top_k=3, methods=M
                 for k in ks:
                     r[f"P@{k}"].append(M.precision_at_k(ranked, rel_ids, k))
                     r[f"R@{k}"].append(M.recall_at_k(ranked, rel_ids, k))
+                    r[f"F1@{k}"].append(M.f1_at_k(ranked, rel_ids, k))
                 r["MAP"].append(M.average_precision(ranked, rel_ids))
                 r["MRR"].append(M.reciprocal_rank(ranked, rel_ids))
         outs = {"frequency": frequency_baseline(inst, hist, pop),
