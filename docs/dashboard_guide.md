@@ -24,7 +24,7 @@ template answers built from the same evidence.
 
 | Element | What it does |
 |---|---|
-| **Sidebar: page list** | The six pages below. The blue bar marks the current page. |
+| **Sidebar: page list** | The seven pages below. The blue bar marks the current page. |
 | **Sidebar: Sample** | Which test sample the numbers come from. `sample_test_500` is the real evaluation (500 instances for NYC and TKY, 334 for Massive-STEPS Tokyo). `sample_test_debug20` is the 20-instance smoke test. |
 | **Sidebar: Results last updated** | Time of the newest result file. |
 | **⋮ menu (top right)** | Switch **System / Light / Dark** theme. |
@@ -107,11 +107,17 @@ and its p-value.
 and Qwen-7B beats it on Massive-STEPS Tokyo (19.2 vs 12.3, p = 0.015), where there is little history to count.
 Qwen-3B is clearly below it on NYC and TKY and level with it on Tokyo.
 
-**Stronger baselines and the assistant engine** (below each dataset's table, once
-`reports/assistant/results.json` exists): non-LLM rankers on the same test cases: the time-aware heuristic,
-**Markov** (where the user went next after their current place), **recency**, and the assistant's fused engine, with
-Δ vs the heuristic and p-values. A second table shows how often the *kind* of place (category) is predicted
-correctly. Rows tagged *post hoc* were designed after seeing the LLM results and are exploratory.
+**Stronger baselines and the assistant engine** (below each dataset's table): non-LLM rankers on the same test
+cases, from Member 2's `reports/assistant/results.json`. The first row is always the time-aware heuristic (the E1
+baseline); then **Markov** (where the user went next after their current place), **recency** (most recently visited
+places), the assistant's **evidence engine** (a fusion of the heuristic, Markov and time habits), and **Engine +
+LLM** (the saved LLM rankings fused in, tagged *post hoc* because it was designed after seeing the LLM results). Δ
+and p are against the time-aware heuristic. A second table shows **category accuracy**: how often the *kind* of
+place is right.
+
+**What it shows right now:** the engine matches the heuristic on NYC (29.2 vs 28.6) and TKY (19.8 vs 20.8), both not
+significant, and beats it clearly on Massive-STEPS Tokyo (22.2 vs 12.3, p < 0.001). Markov and recency alone are
+weaker than the heuristic, and adding the LLM to the engine does not help.
 
 ---
 
@@ -216,9 +222,14 @@ methods. The models do not use venue names here.
    - *Invalid rate:* how often the answer was unusable (0-0.3%).
 5. **Parse status:** how each answer was read: clean JSON (dark), regex fallback (grey) or failed (red). Almost
    everything is clean JSON; Qwen-3B had one empty answer and one regex fallback in 8,108 answers.
-6. **What the LLM copies** (once `reports/assistant/copy_analysis.json` exists): for every LLM run, how often its
-   first guess is exactly what a simple rule would pick: the heuristic's top place, the Markov top place, the last
-   place visited, or a place from the current trip. High shares mean copying.
+6. **What the LLM copies** (Member 1's `reports/assistant/copy_analysis.json`): for every LLM run, how often its
+   first guess is the same place a simple rule would pick: the time-aware **heuristic**, the plain visit
+   **counter**, the **last place**, **Markov** (where the user usually went after the last place), any place of the
+   **current trip**, and **any rule** at all; plus how often it named a **never-seen** place. Hover a value for its
+   95% interval. Each dataset starts with an *Actual next place* row: how often the true answer follows each rule.
+   **What it shows right now:** Qwen-7B's first guess equals some simple rule in 78-84% of NYC and TKY cases and is a
+   never-seen place in at most 0.6%, while the true next place follows a rule only 41-49% of the time: the model is
+   more habit-bound than the people it predicts.
 
 ---
 
@@ -228,8 +239,14 @@ methods. The models do not use venue names here.
 next-place assistant look like?
 
 **Filters:** Dataset (NYC, TKY, Massive-STEPS Tokyo) and **User**: you role-play a real user from the data (the
-list shows their check-in count and most common kind of place). A tag on the right shows whether the local LLM is
-ready (**● Qwen2.5-3B ready**) or the page is using template answers.
+list shows their check-in count and most common kind of place). Users marked **★** are demo personas with one
+strong, real routine. A tag on the right shows whether the local LLM is ready (**● Qwen2.5-3B ready**) or the page
+is using template answers.
+
+**Known routine (★ users only):** a banner such as "After Gym / Fitness Center #1290 this user went to Coffee Shop
+#1750 11 of 12 times (92%), usually about 0.8 h later · across all days · example moment: Friday 07:00", with a
+**Load this routine** button that sets the current place to the routine's start and the day and time to that example
+moment. Then ask "Where should I go next?": the routine comes out as the top suggestion for every persona.
 
 **Left column: the moment**
 
@@ -244,7 +261,8 @@ ready (**● Qwen2.5-3B ready**) or the page is using template answers.
 
 1. Type a question or click one of the suggested ones. The question is read for intent: "something **new**",
    and the **kind** of place (food, coffee, drinks, shopping, outdoors, transport), so "somewhere new to eat"
-   suggests restaurants the user has never been to.
+   suggests restaurants the user has never been to. The place you are at or come from is ignored ("I just left the
+   bar, where to eat?" asks for food), and only places of the requested kind are shown to the model.
 2. **The answer** in plain words, with a line saying who wrote it (Qwen2.5-3B, Qwen2.5-3B after one stricter retry,
    or the template), how long it took, and that every place and number was checked against the evidence.
 3. **How I got this** (expandable): the evidence table (what came next after this place, share of all check-ins,
@@ -260,8 +278,9 @@ ready (**● Qwen2.5-3B ready**) or the page is using template answers.
 **How the answer is kept honest:** the evidence engine computes every place, count and distance from the user's
 history; the model only rewrites it. A validator rejects any answer that mentions a place, percentage, count or
 distance that is not in the evidence (or puts a distance next to the wrong place); the model then gets one stricter
-retry, and after that the template answer is shown. In a test of 50 varied questions, 94% of answers passed on the
-first try, 98% after the retry, and 2% fell back to the template.
+retry, and after that the template answer is shown. With the real engine, 60 questions across all 15 personas
+gave 56 answers accepted first time, 4 after the retry and none from the template, about 1 second each; questions
+asking for a kind of place showed only places of that kind (45 of 45).
 
 **Good things to try in a demo:** pick a ★ user and click **Load this routine**, then "Where should I go next?";
 something new ("Somewhere new to eat?"); Massive-STEPS Tokyo for real venue names; and a quiet time of week to see
@@ -285,5 +304,5 @@ real names but short histories. Suggestions of new places are popularity-based o
 | Raw predictions, one line per test case | `results/llm/<dataset>/*.jsonl` |
 | How everything is computed | `docs/llm_pipeline.md` |
 | The story of the project | `docs/project_overview.md` |
-| Assistant engine evaluation and copy analysis | `reports/assistant/` |
+| Assistant engine evaluation and copy analysis | `reports/assistant/` (`results.md`, `copy_analysis.md`) |
 | Assistant plan, contract and report formats | `docs/assistant_plan.md` |

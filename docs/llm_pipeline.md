@@ -167,9 +167,12 @@ explains**. Member 1's profile and Member 2's evidence engine produce an `Eviden
 | Filler | `strip_filler()` drops sentences that are only sales talk ("You will enjoy it."), which the 3B model sometimes adds despite the rules |
 | Retry / fallback | One retry with the problems listed, then `fallback_answer()`: a template built from the same evidence (also used when Ollama is not running), itself checked by the validator in the tests |
 
-Measured on 50 varied questions (2 datasets × 5 users × 5 question types, RTX 4050 laptop): 94% of answers accepted
-first time, 98% after one retry, 2% template; 1-2 s per answer once the model is loaded. Every rejection was a real
-error (invented percentage or count, misplaced distance). Tests: `tests/test_assist_llm.py` (24, no Ollama needed).
+Measured with the real profile and evidence engine (RTX 4050 laptop): 60 questions across all 15 demo personas (3
+datasets × 5 personas × 4 question types) gave 56 answers accepted first time, 4 after one retry and none from the
+template, about 1 s per answer once the model is loaded; every rejection was a real error (an invented number or a
+misplaced distance). The persona's routine was the top suggestion for 15 of 15, and questions asking for a kind of
+place showed only places of that kind (45 of 45). An earlier check on the stub engine (50 questions) gave 94% / 98% /
+2%. Tests: `tests/test_assist_llm.py` (no Ollama needed).
 
 ## Limits to state in the paper
 
