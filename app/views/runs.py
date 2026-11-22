@@ -146,23 +146,44 @@ def render():
             'column-gap:32px;row-gap:4px"><div>' + "".join(out[:half]) + "</div><div>" + "".join(out[half:]) + "</div></div>")
 
 
-    # What exactly does the LLM copy? (Member 1's reports/assistant/copy_analysis.json)
-    ui.section("What the LLM copies", "share of top-1 guesses equal to each simple rule's top-1")
-    rep = data.assistant_report("copy_analysis")
-    rows_c = [r for r in (rep or {}).get("runs", []) if (ds_f == "all" or r.get("dataset") == ds_f)
-              and (model_f == "all" or r.get("model") == model_f) and (meth_f == "all" or r.get("method") == meth_f)]
-    if not rows_c:
+    # What exactly does the LLM copy? (Member 1's reports/assistant/copy_analysis.json, tracex_assist/analysis_copy.py)
+    ui.section("What the LLM copies", "how often the first guess equals each simple rule's choice · %")
+    rep = data.assistant_report("copy_analysis") or {}
+    runs_c = [r for r in rep.get("runs", {}).values() if isinstance(r, dict) and r.get("main")
+              and (ds_f == "all" or r.get("dataset") == ds_f) and (model_f == "all" or r.get("model") == model_f)
+              and (meth_f == "all" or r.get("method") == meth_f)]
+    if not runs_c:
         ui.caption("Appears when the copy analysis is in the repo (reports/assistant/copy_analysis.json, written by "
                    "<code>python -m tracex_assist.analysis_copy</code>).")
         return
+    rules = ["heuristic", "counter", "last", "markov", "trip", "any_rule"]
+    names = {**{"heuristic": "Heuristic", "counter": "Counter", "last": "Last place", "markov": "Markov",
+                "trip": "Current trip", "any_rule": "Any rule"}}
 
-    def share(x):
-        return "–" if x is None else ui.num(100 * x)
-    st.html(ui.table([("Dataset", "l"), ("Model", "l"), ("Method", "l"), ("n", "r"), ("= heuristic top-1 %", "r"),
-                      ("= Markov top-1 %", "r"), ("= last place %", "r"), ("in current trip %", "r")],
-                     [{"cells": [ui.DATASET_SHORT.get(r["dataset"], r["dataset"]),
-                                 ui.MODELS.get(r["model"], r["model"]), ui.METHOD_SHORT.get(r["method"], r["method"]),
-                                 str(r.get("n", "–")), share(r.get("same_as_frequency")), share(r.get("same_as_markov")),
-                                 share(r.get("same_as_last_place")), share(r.get("in_current_trip"))]} for r in rows_c],
-                     min_width=900))
-    ui.caption("A high share means the LLM's first guess is the same place a simple rule would pick: copying.")
+    def cell(m):
+        if m is None:
+            return "–"
+        v = m["mean"] if isinstance(m, dict) else m
+        tip = f' title="95% CI {ui.num(100 * m["lo"])}-{ui.num(100 * m["hi"])}"' if isinstance(m, dict) and "lo" in m else ""
+        return f"<span{tip}>{ui.num(100 * v)}</span>"
+
+    rows_c = []
+    order = {d: i for i, d in enumerate(ui.DATASETS)}
+    for d in sorted({r["dataset"] for r in runs_c}, key=lambda x: order.get(x, 9)):
+        info = rep.get("datasets", {}).get(d, {})
+        label = ui.DATASET_SHORT.get(d, d)
+        if info.get("truth"):
+            rows_c.append({"cls": "ref", "cells": [label, ("<i>Actual next place</i>", "muted"), str(info.get("n", "–"))]
+                           + [(cell(info["truth"].get(k)), "r") for k in rules] + [("–", "r")]})
+        for r in sorted((r for r in runs_c if r["dataset"] == d), key=lambda r: (r["model"] != "qwen7b", r["method"])):
+            rows_c.append({"cells": [
+                label, f'<span style="display:inline-flex;align-items:center;gap:6px">{ui.sw(ui.MODEL_SW.get(r["model"], "sw-7"), False)}'
+                       f'{ui.MODEL_SHORT.get(r["model"], r["model"])} · {ui.METHOD_SHORT.get(r["method"], r["method"])}</span>',
+                str(r.get("n", "–"))] + [(cell(r.get("match", {}).get(k)), "r") for k in rules]
+                + [(ui.num(100 * r.get("outside", {}).get("never_seen", 0)), "r")]})
+    st.html(ui.table([("Dataset", "l"), ("Run", "l"), ("n", "r")] + [(f"= {names[k]}", "r") for k in rules]
+                     + [("Never-seen place", "r")], rows_c, min_width=1000))
+    ui.caption("Each value is the share of test cases where the LLM's first guess is the same place the rule would pick "
+               "(hover for the 95% interval). <i>Actual next place</i> rows show how often the true answer follows each "
+               "rule, for comparison. Rules overlap, so a row does not add up to 100. Massive-STEPS uses names present. "
+               "Details and per-slice tests: reports/assistant/copy_analysis.md.")

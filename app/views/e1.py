@@ -92,32 +92,56 @@ def _dataset_block(dataset: str, metric: str, models: list[str], methods: list[s
     ui.caption(" ".join(notes))
 
 
-def _engine_block(dataset: str):
+ENGINE_LABELS = {"frequency": "Visit counter (plain)", "counter": "Visit counter (plain)",
+                 "heuristic": "Time-aware heuristic", "markov": "Markov (last place → next)", "recency": "Recency",
+                 "engine": "Assistant engine (RRF)", "llm_fusion": "Engine + LLM (RRF)"}
+EXPLORATORY = {"llm_fusion"}
+
+
+def _engine_rows(rep: dict, dataset: str) -> tuple[list[tuple[str, dict, dict | None, bool]], str]:
+    """(key, summary, comparison, exploratory) rows and the comparator name, from either report format."""
+    if "datasets" in rep:  # format of docs/assistant_plan.md section 8
+        d = rep["datasets"].get(dataset) or {}
+        rows = [(k, m, m.get("vs_frequency"), bool(m.get("exploratory"))) for k, m in d.get("methods", {}).items()]
+        return rows, "the time-aware heuristic"
+    comps = {c["method"]: c for c in rep.get("comparisons", []) if c.get("dataset") == dataset}
+    rows = [(k, per[dataset], comps.get(k), k in EXPLORATORY) for k, per in rep.get("methods", {}).items()
+            if dataset in per]
+    return rows, ENGINE_LABELS.get(rep.get("comparator", "frequency"), "the visit counter").lower()
+
+
+def _engine_block(dataset: str, res: dict, sample: str):
     """Stronger non-LLM baselines and the assistant's evidence engine (Member 2's reports/assistant/results.json)."""
-    ui.section(f"Stronger baselines and the assistant engine · {ui.DATASETS[dataset]}",
-               "non-LLM rankers on the same instances · Δ vs the time-aware heuristic, p = McNemar, Holm-adjusted")
     rep = data.assistant_report("results")
-    d = (rep or {}).get("datasets", {}).get(dataset)
-    if not d:
+    rows_src, comparator = _engine_rows(rep or {}, dataset)
+    ui.section(f"Stronger baselines and the assistant engine · {ui.DATASETS[dataset]}",
+               f"non-LLM rankers on the same instances · Δ vs {comparator}, p = McNemar, Holm-adjusted")
+    if not rows_src:
         ui.caption("Appears when the offline evaluation of the assistant engine is in the repo "
                    "(reports/assistant/results.json, written by <code>python -m tracex_assist.evaluate</code>).")
         return
-    rows = []
-    for key, m in d.get("methods", {}).items():
-        v = m.get("vs_frequency")
-        name = ui.esc(m.get("label", key)) + (f" {ui.tag('post hoc')}" if m.get("exploratory") else "")
-        rows.append({"cls": "ref" if key == "frequency" else "", "cells": [
-            name, str(m.get("n", d.get("n", "–"))), ui.pct(m.get("acc1")), ui.pct(m.get("acc5")), ui.pct(m.get("mrr")),
-            ui.pct(m.get("ndcg5")), (ui.diff(v["acc1"]) if v else "–", "strong"), ui.pval(v.get("p_holm")) if v else "–"]})
+    f = data.freq(res, dataset, sample)
+    has_cat = "cat_acc1" in f
+    rows = [{"cls": "ref", "cells": [
+        f'Time-aware heuristic {ui.tag("E1 baseline")}', str(f["n"]), ui.pct(f["acc1"]), ui.pct(f["acc5"]),
+        ui.pct(f["mrr"]), ui.pct(f["ndcg5"]), ("–", "strong"), "–"]}]
+    cat_rows = [{"cls": "ref", "cells": ["Time-aware heuristic", ui.pct(f.get("cat_acc1")), ui.pct(f.get("cat_acc5"))]}]         if has_cat else []
+    for key, m, v, exploratory in rows_src:
+        name = ui.esc(m.get("label") or ENGINE_LABELS.get(key, key)) + (f" {ui.tag('post hoc')}" if exploratory else "")
+        rows.append({"cells": [name, str(m.get("n", "–")), ui.pct(m.get("acc1")), ui.pct(m.get("acc5")),
+                               ui.pct(m.get("mrr")), ui.pct(m.get("ndcg5")),
+                               (ui.diff(v["acc1"]) if v else "–", "strong"),
+                               ui.pval((v.get("mcnemar_acc1") or {}).get("p_holm", v.get("p_holm"))) if v else "–"]})
+        if "cat_acc1" in m:
+            cat_rows.append({"cells": [name, ui.pct(m.get("cat_acc1")), ui.pct(m.get("cat_acc5"))]})
     st.html(ui.table([("Ranker", "l"), ("n", "r"), ("Acc@1", "r"), ("Acc@5", "r"), ("MRR", "r"), ("NDCG@5", "r"),
-                      ("Δ Acc@1 vs heuristic", "r"), ("p (Holm)", "r")], rows, min_width=900))
-    cat = d.get("category")
-    if cat:
-        crow = [{"cells": [ui.esc(m.get("label", k)), ui.pct(m.get("acc1")), ui.pct(m.get("acc5"))]} for k, m in cat.items()]
+                      (f"Δ Acc@1 vs {comparator}", "r"), ("p (Holm)", "r")], rows, min_width=900))
+    if len(cat_rows) > 1:
         st.html('<div class="tx-root tx-h3" style="margin-top:8px">Kind of place (category) prediction</div>' +
-                ui.table([("Ranker", "l"), ("Category Acc@1", "r"), ("Category Acc@5", "r")], crow))
-    ui.caption("Markov = where the user went next after their current place; recency = most recently visited places; "
-               "engine = the assistant's fused ranking. Rows tagged post hoc were designed after seeing the LLM results.")
+                ui.table([("Ranker", "l"), ("Category Acc@1", "r"), ("Category Acc@5", "r")], cat_rows))
+    ui.caption("The first row is the time-aware heuristic used as the E1 baseline above. Markov = where the user went "
+               "next after their current place; recency = most recently visited places; engine = the assistant's "
+               "fused ranking. Rows tagged post hoc were designed after seeing the LLM results.")
 
 
 def render():
@@ -138,4 +162,4 @@ def render():
     methods = METHOD_ORDER if meth == "all" else [meth]
     for d in (list(ui.DATASETS) if ds == "all" else [ds]):
         _dataset_block(d, metric, models, methods, res, sample)
-        _engine_block(d)
+        _engine_block(d, res, sample)

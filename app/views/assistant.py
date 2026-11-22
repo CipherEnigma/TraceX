@@ -143,6 +143,26 @@ def _map(prof, ev, places, current: int | None):
            color="color", size="size", height=360)  # auto-fits all points
 
 
+def _routine_callout(persona: dict, places, here_key: str):
+    """Member 1's demo persona: one strong, real routine of this user, loadable in one click."""
+    def load():
+        st.session_state["as_day"] = persona["weekday"]
+        st.session_state["as_hour"] = persona["hour"]
+        st.session_state[here_key] = persona["from_poi"]
+
+    share = persona["count"] / persona["total"] if persona["total"] else 0
+    a, b = st.columns([5, 1], vertical_alignment="center")
+    with a:
+        st.html(f'<div class="tx-callout tx-root"><span class="tx-tag ok">★ Known routine</span><span>After '
+                f'<b>{ui.esc(llm.label(places, persona["from_poi"]))}</b> this user went to '
+                f'<b>{ui.esc(llm.label(places, persona["to_poi"]))}</b> {persona["count"]} of {persona["total"]} times '
+                f'({ui.num(100 * share, 0)}%), usually about {ui.num(persona["median_gap_hours"], 1)} h later · '
+                f'typically {WD_LONG[persona["weekday"]]} around {persona["hour"]:02d}:00</span></div>')
+    with b:
+        st.button("Load this routine", key=f"{here_key}_load", on_click=load, width="stretch",
+                  help="Set the day, time and current place to this routine, then ask “Where should I go next?”")
+
+
 # ---------------------------------------------------------------------------
 # Page
 # ---------------------------------------------------------------------------
@@ -155,8 +175,9 @@ def render():
         ds = ui.segmented("Dataset", DATASETS, "as_ds")
     personas = _personas(ds)
     with c2:
-        uid = ui.select("User", {p["user_id"]: f"User {p['user_id']} · {p['n_checkins']:,} check-ins · mostly "
-                                               f"{p['top_category']}" for p in personas}, f"as_user_{ds}")
+        uid = ui.select("User", {p["user_id"]: ("★ " if p.get("persona") else "") + f"User {p['user_id']} · "
+                                               f"{p['n_checkins']:,} check-ins · mostly {p['top_category']}"
+                                 for p in personas}, f"as_user_{ds}")
     with c3:
         st.html(f'<div class="tx-root" style="text-align:right;padding-bottom:10px">{_status_tag(status)}</div>')
     ui.rule()
@@ -169,17 +190,30 @@ def render():
     prof = _profile(ds, uid)
     chat_key = f"as_chat_{ds}_{uid}"
     st.session_state.setdefault(chat_key, [])
+    persona = next((p.get("persona") for p in personas if p["user_id"] == uid), None)
+    here_key = f"as_here_{ds}_{uid}"
+    if persona:
+        _routine_callout(persona, places, here_key)
 
     left, right = st.columns([1, 2.1], gap="large")
     with left:
         st.html('<div class="tx-root tx-h2">The moment</div>')
         d1, d2 = st.columns(2)
+        # defaults live in session state only, so "Load this routine" can set them without a widget warning
+        st.session_state.setdefault("as_day", 4)
+        st.session_state.setdefault("as_hour", 18)
         with d1:
-            weekday = ui.select("Day", dict(enumerate(WD_LONG)), "as_day", default=4)
+            weekday = st.selectbox("Day", list(range(7)), format_func=lambda d: WD_LONG[d], key="as_day")
         with d2:
-            hour = st.selectbox("Time", list(range(24)), index=18, format_func=lambda h: f"{h:02d}:00", key="as_hour")
-        here_opts = {pid: f"{llm.label(places, pid)} · {n} visits" for pid, n in prof.top_places[:15]}
-        current = ui.select("You are at", here_opts, f"as_here_{ds}_{uid}")
+            hour = st.selectbox("Time", list(range(24)), format_func=lambda h: f"{h:02d}:00", key="as_hour")
+        visits = dict(prof.top_places)
+        here_ids = [pid for pid, _ in prof.top_places[:15]]
+        if persona and persona["from_poi"] not in here_ids:  # the routine's start place is always selectable
+            here_ids.append(persona["from_poi"])
+        here_opts = {pid: f"{llm.label(places, pid)} · {visits.get(pid, 0)} visits" for pid in here_ids}
+        if st.session_state.get(here_key) not in here_opts:
+            st.session_state[here_key] = here_ids[0]
+        current = st.selectbox("You are at", here_ids, format_func=lambda pid: here_opts[pid], key=here_key)
         want_new = st.toggle("Suggest something new", key="as_new",
                              help="Also list nearby places this user has never visited")
         st.html(f'<div class="tx-note">{WD_LONG[weekday]} {hour:02d}:00 · {time_bucket(hour)}</div>')
