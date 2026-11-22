@@ -124,6 +124,14 @@ samples are identical to the repo's, and runs everything.
   With Members 1 and 2's tests: 40 passing.
 - **Documentation:** this file, `llm_pipeline.md` (every setting and why), `dashboard_guide.md`.
 
+### Step 6. A personal assistant built on the findings
+
+Because the LLM copies rather than reasons, the last piece uses each tool for what it is good at: an **evidence
+engine** (Member 1's user profiles, Member 2's back-off statistics and rank fusion, both pure IR) decides where a user
+is likely to go and why, and **Qwen2.5-3B, run locally with Ollama, only explains** that evidence. A validator
+checks that every place and number in the answer comes from the evidence, with a template answer as a safety net.
+It is page 7 of the dashboard; the plan and division of work are in [assistant_plan.md](assistant_plan.md).
+
 ---
 
 ## 3. What we found

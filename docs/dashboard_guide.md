@@ -1,7 +1,8 @@
 # TraceX dashboard: page-by-page guide
 
 The dashboard shows every result of the project in one place: the three experiments (E1, E2, E3), single
-predictions you can inspect one by one, and the health of every LLM run. It reads the saved results in
+predictions you can inspect one by one, the health of every LLM run, and a personal assistant built on what we
+learned (page 7). It reads the saved results in
 `results/llm/` and uses the same evaluation code as `reports/llm/results.md`, so every number on screen matches
 the paper tables.
 
@@ -14,6 +15,10 @@ streamlit run app/dashboard.py                 # opens http://localhost:8501
 ```
 
 Stop it with **Ctrl + C** in the terminal. New result files appear after a page refresh.
+
+The Personal assistant page (7) also uses [Ollama](https://ollama.com) if it is installed and running, with the
+model `qwen2.5:3b` (`ollama pull qwen2.5:3b`, about 1.9 GB). Without Ollama the page still works and shows
+template answers built from the same evidence.
 
 ## Things that work the same on every page
 
@@ -101,6 +106,12 @@ and its p-value.
 **What it shows right now:** the heuristic beats Qwen-7B on NYC (28.6 vs 23.2, p = 0.035) and TKY (20.8 vs 16.0-17.0),
 and Qwen-7B beats it on Massive-STEPS Tokyo (19.2 vs 12.3, p = 0.015), where there is little history to count.
 Qwen-3B is clearly below it on NYC and TKY and level with it on Tokyo.
+
+**Stronger baselines and the assistant engine** (below each dataset's table, once
+`reports/assistant/results.json` exists): non-LLM rankers on the same test cases: the time-aware heuristic,
+**Markov** (where the user went next after their current place), **recency**, and the assistant's fused engine, with
+Δ vs the heuristic and p-values. A second table shows how often the *kind* of place (category) is predicted
+correctly. Rows tagged *post hoc* were designed after seeing the LLM results and are exploratory.
 
 ---
 
@@ -205,6 +216,54 @@ methods. The models do not use venue names here.
    - *Invalid rate:* how often the answer was unusable (0-0.3%).
 5. **Parse status:** how each answer was read: clean JSON (dark), regex fallback (grey) or failed (red). Almost
    everything is clean JSON; Qwen-3B had one empty answer and one regex fallback in 8,108 answers.
+6. **What the LLM copies** (once `reports/assistant/copy_analysis.json` exists): for every LLM run, how often its
+   first guess is exactly what a simple rule would pick: the heuristic's top place, the Markov top place, the last
+   place visited, or a place from the current trip. High shares mean copying.
+
+---
+
+## 7. Personal assistant
+
+**Question it answers:** if we use what we learned (IR decides, the LLM explains), what does a useful, honest
+next-place assistant look like?
+
+**Filters:** Dataset (NYC, TKY, Massive-STEPS Tokyo) and **User**: you role-play a real user from the data (the
+list shows their check-in count and most common kind of place). A tag on the right shows whether the local LLM is
+ready (**● Qwen2.5-3B ready**) or the page is using template answers.
+
+**Left column: the moment**
+
+1. **Day, Time, You are at** (one of the user's usual places) and **Suggest something new** (also list nearby
+   places the user has never visited).
+2. **Profile:** check-ins, trips, the period covered, and the 5 usual places.
+3. **Weekly routine:** a heatmap of check-ins by weekday × time of day (morning, midday, afternoon, evening,
+   night); darker = more. The cell for the chosen moment is outlined. Hover a cell for the count and the most common
+   kind of place.
+
+**Right column: ask**
+
+1. Type a question or click one of the suggested ones. The question is read for intent: "something **new**",
+   and the **kind** of place (food, coffee, drinks, shopping, outdoors, transport), so "somewhere new to eat"
+   suggests restaurants the user has never been to.
+2. **The answer** in plain words, with a line saying who wrote it (Qwen2.5-3B, Qwen2.5-3B after one stricter retry,
+   or the template), how long it took, and that every place and number was checked against the evidence.
+3. **How I got this** (expandable): the evidence table (what came next after this place, share of all check-ins,
+   visits at this time of week), each with its count ("12 of 36"), share bar and the data it is based on; the nearby
+   places the user has never visited with distance and popularity; a warning if the evidence rests on fewer than 5
+   visits; the engine's offline accuracy; and **exactly what the model was shown**.
+4. **Map:** you are here (orange), the user's usual places (blue) and suggested new places (green).
+
+**How the answer is kept honest:** the evidence engine computes every place, count and distance from the user's
+history; the model only rewrites it. A validator rejects any answer that mentions a place, percentage, count or
+distance that is not in the evidence (or puts a distance next to the wrong place); the model then gets one stricter
+retry, and after that the template answer is shown. In a test of 50 varied questions, 94% of answers passed on the
+first try, 98% after the retry, and 2% fell back to the template.
+
+**Good things to try in a demo:** a habit ("Where should I go next?"), something new ("Somewhere new to eat?"),
+Massive-STEPS Tokyo for real venue names, and a quiet time of week to see the thin-evidence warning.
+
+**Data limits:** NYC and TKY have no venue names (places are shown as "Coffee Shop #345"); Massive-STEPS Tokyo has
+real names but short histories. Suggestions of new places are popularity-based options, not predictions.
 
 ---
 
@@ -217,3 +276,5 @@ methods. The models do not use venue names here.
 | Raw predictions, one line per test case | `results/llm/<dataset>/*.jsonl` |
 | How everything is computed | `docs/llm_pipeline.md` |
 | The story of the project | `docs/project_overview.md` |
+| Assistant engine evaluation and copy analysis | `reports/assistant/` |
+| Assistant plan, contract and report formats | `docs/assistant_plan.md` |

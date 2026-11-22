@@ -65,3 +65,4 @@ python -m pytest tests/test_llm.py -q                                           
 - Full details, settings and limits: [docs/llm_pipeline.md](docs/llm_pipeline.md).
 - The whole project in plain language (goal, how it was built, findings): [docs/project_overview.md](docs/project_overview.md).
 - What each dashboard page shows and how to read it: [docs/dashboard_guide.md](docs/dashboard_guide.md).
+- Personal assistant (dashboard page 7; IR evidence decides, local Qwen2.5-3B via Ollama explains): [docs/assistant_plan.md](docs/assistant_plan.md), code in `tracex_assist/`.

@@ -146,10 +146,29 @@ Measured on a Tesla T4: Qwen2.5-7B takes 3.6-4.2 s per instance (prompts of abou
 ## Dashboard (`app/`)
 
 `streamlit run app/dashboard.py`. Six pages built from the Claude Design boards: Overview, E1 Heuristic floor, E2
-Revisit vs new, E3 Name test, Instance explorer, Runs & behaviour. It reads `results/llm/` live (new Kaggle results
+Revisit vs new, E3 Name test, Instance explorer, Runs & behaviour, plus page 7, Personal assistant (below). It reads `results/llm/` live (new Kaggle results
 appear on refresh) and uses `tracex_llm.evaluate`, so every number matches `reports/llm/results.md`. Theme tokens are
 in `.streamlit/config.toml` and `app/tracex.css`; light and dark are both defined (switch in the ⋮ menu at the top right).
 `TRACEX_RESULTS_DIR=<folder>` points it at another results folder.
+
+## Personal assistant: the grounded LLM layer (`tracex_assist/llm.py`)
+
+Our experiments show the LLM copies habits rather than reasoning, so in the assistant **IR decides and the LLM only
+explains**. Member 1's profile and Member 2's evidence engine produce an `Evidence` object (contract:
+`tracex_assist/contract.py`, plan: [assistant_plan.md](assistant_plan.md)); this layer turns it into an answer.
+
+| Step | What it does |
+|---|---|
+| Intent | `parse_intent(question)` → `want_new` ("somewhere new", "haven't tried") and `want_kind` (food, coffee, drinks, shopping, outdoors, transport), set in the `Context` **before** evidence is gathered |
+| View | `evidence_view(ev, places)`: readable place labels ("Coffee Shop #345", or the real Tokyo name) and every number pre-written as text ("you went there next 11 of 20 times (55%)"). New places are included only when asked for. This view is the only thing the model sees |
+| Prompt | 11 rules: use only the evidence, copy numbers exactly, never call a known place new, no facts or opinions not in the evidence, at most 120 words |
+| Model | `qwen2.5:3b` through a local [Ollama](https://ollama.com) server (`/api/chat`, temperature 0.2), standard library only; nothing leaves the laptop |
+| Validator | Every `#id`, percentage, "N of M" count and distance in the answer must occur in the view, and a distance must sit in the same sentence as the place it belongs to (by `#id` or name) |
+| Retry / fallback | One retry with the problems listed, then `fallback_answer()`: a template built from the same evidence (also used when Ollama is not running), itself checked by the validator in the tests |
+
+Measured on 50 varied questions (2 datasets × 5 users × 5 question types, RTX 4050 laptop): 94% of answers accepted
+first time, 98% after one retry, 2% template; 1-2 s per answer once the model is loaded. Every rejection was a real
+error (invented percentage or count, misplaced distance). Tests: `tests/test_assist_llm.py` (24, no Ollama needed).
 
 ## Limits to state in the paper
 
