@@ -1,0 +1,443 @@
+{
+  "generated_by": "python -m tracex_assist.profile",
+  "datasets": {
+    "nyc": {
+      "personas": [
+        {
+          "user_id": "475",
+          "n_checkins": 40,
+          "n_trips": 11,
+          "n_places": 3,
+          "top_category": "Coffee Shop",
+          "persona": {
+            "user_id": "475",
+            "from_poi": 1290,
+            "from_category": "Gym / Fitness Center",
+            "from_name": null,
+            "to_poi": 1750,
+            "to_category": "Coffee Shop",
+            "to_name": null,
+            "count": 11,
+            "total": 12,
+            "median_gap_hours": 0.85,
+            "weekday": 4,
+            "hour": 7
+          }
+        },
+        {
+          "user_id": "956",
+          "n_checkins": 153,
+          "n_trips": 46,
+          "n_places": 8,
+          "top_category": "Subway",
+          "persona": {
+            "user_id": "956",
+            "from_poi": 2968,
+            "from_category": "Subway",
+            "from_name": null,
+            "to_poi": 104,
+            "to_category": "Sandwich Place",
+            "to_name": null,
+            "count": 49,
+            "total": 63,
+            "median_gap_hours": 1.02,
+            "weekday": 0,
+            "hour": 5
+          }
+        },
+        {
+          "user_id": "275",
+          "n_checkins": 126,
+          "n_trips": 17,
+          "n_places": 25,
+          "top_category": "Italian Restaurant",
+          "persona": {
+            "user_id": "275",
+            "from_poi": 1139,
+            "from_category": "Taxi",
+            "from_name": null,
+            "to_poi": 3712,
+            "to_category": "Italian Restaurant",
+            "to_name": null,
+            "count": 7,
+            "total": 7,
+            "median_gap_hours": 0.36,
+            "weekday": 0,
+            "hour": 10
+          }
+        },
+        {
+          "user_id": "64",
+          "n_checkins": 261,
+          "n_trips": 37,
+          "n_places": 39,
+          "top_category": "Home (private)",
+          "persona": {
+            "user_id": "64",
+            "from_poi": 3055,
+            "from_category": "Gas Station / Garage",
+            "from_name": null,
+            "to_poi": 3624,
+            "to_category": "Burrito Place",
+            "to_name": null,
+            "count": 5,
+            "total": 5,
+            "median_gap_hours": 0.43,
+            "weekday": 5,
+            "hour": 10
+          }
+        },
+        {
+          "user_id": "684",
+          "n_checkins": 580,
+          "n_trips": 36,
+          "n_places": 9,
+          "top_category": "Hotel",
+          "persona": {
+            "user_id": "684",
+            "from_poi": 3103,
+            "from_category": "Market",
+            "from_name": null,
+            "to_poi": 575,
+            "to_category": "American Restaurant",
+            "to_name": null,
+            "count": 36,
+            "total": 54,
+            "median_gap_hours": 5.0,
+            "weekday": 1,
+            "hour": 19
+          }
+        }
+      ],
+      "scenarios": {
+        "habit": {
+          "question": "Where should I go next?",
+          "user_id": "475",
+          "current_poi": 1290,
+          "weekday": 4,
+          "hour": 7,
+          "shows": {
+            "to_poi": 1750,
+            "count": 11,
+            "total": 12
+          }
+        },
+        "something_new": {
+          "question": "Suggest somewhere new to eat.",
+          "user_id": "275",
+          "current_poi": 1139,
+          "weekday": 0,
+          "hour": 10,
+          "want_new": true,
+          "shows": {
+            "category": "Italian Restaurant",
+            "km": 1.0,
+            "unvisited_nearby": 10
+          }
+        },
+        "thin_evidence": {
+          "question": "Where should I go next?",
+          "user_id": "453",
+          "current_poi": 4914,
+          "weekday": 6,
+          "hour": 3,
+          "shows": {
+            "n_checkins": 4
+          }
+        }
+      }
+    },
+    "tky": {
+      "personas": [
+        {
+          "user_id": "1408",
+          "n_checkins": 182,
+          "n_trips": 33,
+          "n_places": 18,
+          "top_category": "Train Station",
+          "persona": {
+            "user_id": "1408",
+            "from_poi": 3893,
+            "from_category": "Ramen /  Noodle House",
+            "from_name": null,
+            "to_poi": 6210,
+            "to_category": "Coffee Shop",
+            "to_name": null,
+            "count": 23,
+            "total": 25,
+            "median_gap_hours": 0.17,
+            "weekday": 2,
+            "hour": 11
+          }
+        },
+        {
+          "user_id": "471",
+          "n_checkins": 98,
+          "n_trips": 35,
+          "n_places": 25,
+          "top_category": "Food & Drink Shop",
+          "persona": {
+            "user_id": "471",
+            "from_poi": 1405,
+            "from_category": "Café",
+            "from_name": null,
+            "to_poi": 484,
+            "to_category": "Food & Drink Shop",
+            "to_name": null,
+            "count": 9,
+            "total": 9,
+            "median_gap_hours": 0.77,
+            "weekday": 5,
+            "hour": 15
+          }
+        },
+        {
+          "user_id": "1629",
+          "n_checkins": 52,
+          "n_trips": 18,
+          "n_places": 17,
+          "top_category": "Subway",
+          "persona": {
+            "user_id": "1629",
+            "from_poi": 827,
+            "from_category": "Subway",
+            "from_name": null,
+            "to_poi": 5207,
+            "to_category": "Ramen /  Noodle House",
+            "to_name": null,
+            "count": 9,
+            "total": 9,
+            "median_gap_hours": 4.16,
+            "weekday": 1,
+            "hour": 12
+          }
+        },
+        {
+          "user_id": "1668",
+          "n_checkins": 229,
+          "n_trips": 45,
+          "n_places": 52,
+          "top_category": "Train Station",
+          "persona": {
+            "user_id": "1668",
+            "from_poi": 4783,
+            "from_category": "Fried Chicken Joint",
+            "from_name": null,
+            "to_poi": 3433,
+            "to_category": "Food & Drink Shop",
+            "to_name": null,
+            "count": 9,
+            "total": 9,
+            "median_gap_hours": 0.43,
+            "weekday": 2,
+            "hour": 19
+          }
+        },
+        {
+          "user_id": "1827",
+          "n_checkins": 118,
+          "n_trips": 43,
+          "n_places": 27,
+          "top_category": "Bridge",
+          "persona": {
+            "user_id": "1827",
+            "from_poi": 4949,
+            "from_category": "Bridge",
+            "from_name": null,
+            "to_poi": 3832,
+            "to_category": "Chinese Restaurant",
+            "to_name": null,
+            "count": 6,
+            "total": 6,
+            "median_gap_hours": 0.48,
+            "weekday": 0,
+            "hour": 20
+          }
+        }
+      ],
+      "scenarios": {
+        "habit": {
+          "question": "Where should I go next?",
+          "user_id": "1408",
+          "current_poi": 3893,
+          "weekday": 2,
+          "hour": 11,
+          "shows": {
+            "to_poi": 6210,
+            "count": 23,
+            "total": 25
+          }
+        },
+        "something_new": {
+          "question": "Suggest somewhere new to eat.",
+          "user_id": "471",
+          "current_poi": 1405,
+          "weekday": 5,
+          "hour": 15,
+          "want_new": true,
+          "shows": {
+            "category": "Food & Drink Shop",
+            "km": 2.0,
+            "unvisited_nearby": 12
+          }
+        },
+        "thin_evidence": {
+          "question": "Where should I go next?",
+          "user_id": "1230",
+          "current_poi": 643,
+          "weekday": 0,
+          "hour": 18,
+          "shows": {
+            "n_checkins": 4
+          }
+        }
+      }
+    },
+    "msteps_tokyo": {
+      "personas": [
+        {
+          "user_id": "448",
+          "n_checkins": 43,
+          "n_trips": 21,
+          "n_places": 4,
+          "top_category": "Rest Area",
+          "persona": {
+            "user_id": "448",
+            "from_poi": 70,
+            "from_category": "Rest Area",
+            "from_name": "道の駅 八王子滝山",
+            "to_poi": 332,
+            "to_category": "Chinese Restaurant",
+            "to_name": "南京亭",
+            "count": 20,
+            "total": 21,
+            "median_gap_hours": 2.08,
+            "weekday": 6,
+            "hour": 0
+          }
+        },
+        {
+          "user_id": "38",
+          "n_checkins": 70,
+          "n_trips": 19,
+          "n_places": 5,
+          "top_category": "Convenience Store",
+          "persona": {
+            "user_id": "38",
+            "from_poi": 261,
+            "from_category": "Farmers Market",
+            "from_name": "鳥居原ふれあいの館",
+            "to_poi": 805,
+            "to_category": "Bakery",
+            "to_name": "オギノパン 本社工場直売店",
+            "count": 17,
+            "total": 21,
+            "median_gap_hours": 0.85,
+            "weekday": 5,
+            "hour": 15
+          }
+        },
+        {
+          "user_id": "105",
+          "n_checkins": 10,
+          "n_trips": 5,
+          "n_places": 2,
+          "top_category": "Ramen Restaurant",
+          "persona": {
+            "user_id": "105",
+            "from_poi": 2,
+            "from_category": "Train Station",
+            "from_name": "八王子駅 (Hachiōji Sta.)",
+            "to_poi": 2354,
+            "to_category": "Ramen Restaurant",
+            "to_name": "ラーメン二郎 めじろ台店",
+            "count": 5,
+            "total": 5,
+            "median_gap_hours": 3.25,
+            "weekday": 1,
+            "hour": 12
+          }
+        },
+        {
+          "user_id": "68",
+          "n_checkins": 35,
+          "n_trips": 16,
+          "n_places": 6,
+          "top_category": "Hobby Shop",
+          "persona": {
+            "user_id": "68",
+            "from_poi": 294,
+            "from_category": "Hobby Shop",
+            "from_name": "メロンブックス",
+            "to_poi": 1421,
+            "to_category": "Ramen Restaurant",
+            "to_name": "八王子田田",
+            "count": 10,
+            "total": 14,
+            "median_gap_hours": 1.41,
+            "weekday": 4,
+            "hour": 22
+          }
+        },
+        {
+          "user_id": "185",
+          "n_checkins": 26,
+          "n_trips": 10,
+          "n_places": 17,
+          "top_category": "Ramen Restaurant",
+          "persona": {
+            "user_id": "185",
+            "from_poi": 860,
+            "from_category": "Internet Cafe",
+            "from_name": "アプレシオ 八王子駅前店",
+            "to_poi": 794,
+            "to_category": "Ramen Restaurant",
+            "to_name": "油そば 味の天徳",
+            "count": 4,
+            "total": 5,
+            "median_gap_hours": 5.12,
+            "weekday": 5,
+            "hour": 3
+          }
+        }
+      ],
+      "scenarios": {
+        "habit": {
+          "question": "Where should I go next?",
+          "user_id": "448",
+          "current_poi": 70,
+          "weekday": 6,
+          "hour": 0,
+          "shows": {
+            "to_poi": 332,
+            "count": 20,
+            "total": 21
+          }
+        },
+        "something_new": {
+          "question": "Suggest somewhere new to eat.",
+          "user_id": "105",
+          "current_poi": 2,
+          "weekday": 1,
+          "hour": 12,
+          "want_new": true,
+          "shows": {
+            "category": "Ramen Restaurant",
+            "km": 1.0,
+            "unvisited_nearby": 38
+          }
+        },
+        "thin_evidence": {
+          "question": "Where should I go next?",
+          "user_id": "63",
+          "current_poi": 51,
+          "weekday": 3,
+          "hour": 15,
+          "shows": {
+            "n_checkins": 4
+          }
+        }
+      }
+    }
+  }
+}
