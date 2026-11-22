@@ -227,3 +227,50 @@ If behind at checkpoint 1, drop in this order: map → routine heatmap → LLM f
 
 **Limits to state:** NYC has no venue names; Tokyo has thin histories; suggestions of new places are not
 evaluated for accuracy (they are popularity-based options, not predictions); the LLM fusion result is post hoc.
+
+---
+
+## 8. Report formats the dashboard reads (Members 1 and 2: write exactly these)
+
+All rates are fractions (0-1), like `reports/llm/evaluation.json`. A metric with a 95% bootstrap CI is
+`{"mean": 0.286, "lo": 0.246, "hi": 0.326, "n": 500}`; a paired difference is `{"diff": -0.044, "lo": -0.08, "hi": -0.01}`.
+The dashboard shows each section as soon as the file exists (E1 page and Runs & behaviour page) and a short note
+until then.
+
+**Member 2: `reports/assistant/results.json`** (from `python -m tracex_assist.evaluate`)
+
+```json
+{"sample": "sample_test_500",
+ "datasets": {
+  "nyc": {
+   "n": 500,
+   "methods": {
+    "frequency": {"label": "Time-aware heuristic", "acc1": {...}, "acc5": {...}, "mrr": {...}, "ndcg5": {...},
+                  "vs_frequency": null},
+    "markov":    {"label": "Markov (last place -> next)", "acc1": {...}, "acc5": {...}, "mrr": {...}, "ndcg5": {...},
+                  "vs_frequency": {"acc1": {"diff": ..., "lo": ..., "hi": ...}, "p_holm": 0.03}},
+    "recency":   {...},
+    "engine":    {"label": "Assistant engine (RRF)", ...},
+    "engine+qwen7b-llmmob": {"label": "Engine + Qwen-7B LLM-Mob (RRF)", "exploratory": true, ...}
+   },
+   "category": {"frequency": {"label": "Time-aware heuristic", "acc1": {...}, "acc5": {...}},
+                "engine":    {"label": "Assistant engine", "acc1": {...}, "acc5": {...}}}
+  },
+  "tky": {...}, "msteps_tokyo": {...}}}
+```
+
+Rows appear in the order written; `"exploratory": true` adds a *post hoc* tag. `confidence` in `Evidence` should use
+the `engine` row's Acc@1/Acc@5 for that dataset (`{"acc1": 0.29, "acc5": 0.61, "n": 500}`).
+
+**Member 1: `reports/assistant/copy_analysis.json`** (from `python -m tracex_assist.analysis_copy`)
+
+```json
+{"runs": [
+  {"dataset": "nyc", "model": "qwen7b", "method": "llmmob", "n": 500,
+   "same_as_frequency": 0.47, "same_as_markov": 0.39, "same_as_last_place": 0.12, "in_current_trip": 0.30}
+]}
+```
+
+One entry per saved LLM run (`method` is `llmmob` or `retrieval-jaccard`; Massive-STEPS uses the `present` names
+condition). Each share = fraction of instances whose LLM top-1 equals that rule's top-1. Put the "where the LLM beats
+the counter" breakdown in `copy_analysis.md` for the paper.

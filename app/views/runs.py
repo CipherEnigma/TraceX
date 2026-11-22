@@ -144,3 +144,25 @@ def render():
     half = (len(out) + 1) // 2  # fill the left column first, then the right
     st.html('<div class="tx-root" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(480px,100%),1fr));'
             'column-gap:32px;row-gap:4px"><div>' + "".join(out[:half]) + "</div><div>" + "".join(out[half:]) + "</div></div>")
+
+
+    # What exactly does the LLM copy? (Member 1's reports/assistant/copy_analysis.json)
+    ui.section("What the LLM copies", "share of top-1 guesses equal to each simple rule's top-1")
+    rep = data.assistant_report("copy_analysis")
+    rows_c = [r for r in (rep or {}).get("runs", []) if (ds_f == "all" or r.get("dataset") == ds_f)
+              and (model_f == "all" or r.get("model") == model_f) and (meth_f == "all" or r.get("method") == meth_f)]
+    if not rows_c:
+        ui.caption("Appears when the copy analysis is in the repo (reports/assistant/copy_analysis.json, written by "
+                   "<code>python -m tracex_assist.analysis_copy</code>).")
+        return
+
+    def share(x):
+        return "–" if x is None else ui.num(100 * x)
+    st.html(ui.table([("Dataset", "l"), ("Model", "l"), ("Method", "l"), ("n", "r"), ("= heuristic top-1 %", "r"),
+                      ("= Markov top-1 %", "r"), ("= last place %", "r"), ("in current trip %", "r")],
+                     [{"cells": [ui.DATASET_SHORT.get(r["dataset"], r["dataset"]),
+                                 ui.MODELS.get(r["model"], r["model"]), ui.METHOD_SHORT.get(r["method"], r["method"]),
+                                 str(r.get("n", "–")), share(r.get("same_as_frequency")), share(r.get("same_as_markov")),
+                                 share(r.get("same_as_last_place")), share(r.get("in_current_trip"))]} for r in rows_c],
+                     min_width=900))
+    ui.caption("A high share means the LLM's first guess is the same place a simple rule would pick: copying.")
