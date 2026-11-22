@@ -31,27 +31,47 @@ from tracex_ir.baselines import GlobalPopularity, frequency_baseline
 from . import config as C
 from . import stats as S
 
-METRICS = ("acc1", "acc5", "mrr", "ndcg5")
-BINARY = ("acc1", "acc5")
+METRICS = ("acc1", "acc5", "mrr", "ndcg5", "cat_acc1", "cat_acc5")
+BINARY = ("acc1", "acc5", "cat_acc1", "cat_acc5")
 FREQ = "frequency"
 
 
 # ---------------------------------------------------------------------------
 # Per-instance scores
 # ---------------------------------------------------------------------------
-def score(ranked: list, target: int) -> dict:
+def score(ranked: list, target: int, poi_to_cat: dict | None = None, target_cat: str | None = None) -> dict:
     r = ranked[:C.N_PREDICTIONS]
-    return {"acc1": M.accuracy_at_k(r, target, 1), "acc5": M.accuracy_at_k(r, target, 5),
-            "mrr": M.reciprocal_rank(r, {target}), "ndcg5": M.ndcg_at_k(r, {target}, 5)}
+    s = {"acc1": M.accuracy_at_k(r, target, 1), "acc5": M.accuracy_at_k(r, target, 5),
+         "mrr": M.reciprocal_rank(r, {target}), "ndcg5": M.ndcg_at_k(r, {target}, 5)}
+    if poi_to_cat is not None and target_cat is not None:
+        ranked_cats = [poi_to_cat.get(p) for p in r]
+        s["cat_acc1"] = M.category_accuracy_at_k(ranked_cats, target_cat, 1)
+        s["cat_acc5"] = M.category_accuracy_at_k(ranked_cats, target_cat, 5)
+    else:
+        s["cat_acc1"] = float("nan")
+        s["cat_acc5"] = float("nan")
+    return s
 
 
 def method_tag(rec: dict) -> str:
     return f"retrieval-{rec['retriever']}" if rec["method"] == "retrieval" else rec["method"]
 
 
+def _poi_to_cat(dataset: str) -> dict:
+    ds = load_dataset(dataset)
+    return dict(zip(ds.pois["poi_id"], ds.pois["category"]))
+
+
+def _inst_target_cat(dataset: str, sample: str) -> dict:
+    ds = load_dataset(dataset)
+    return {inst["instance_id"]: inst["target"]["category"] for inst in ds.instances(sample)}
+
+
 def load_runs(results_dir: Path, sample: str, include_mock: bool = False) -> dict:
     """{run_key: {"meta": {...}, "rows": {instance_id: row}}} for one sample."""
     runs = {}
+    cat_maps: dict[str, dict] = {}
+    target_cats: dict[str, dict] = {}
     for f in sorted(results_dir.glob(f"*/*__{sample}.jsonl")):
         rows, meta = {}, None
         for line in f.read_text(encoding="utf-8").splitlines():
@@ -60,13 +80,18 @@ def load_runs(results_dir: Path, sample: str, include_mock: bool = False) -> dic
             try:
                 r = json.loads(line)
             except json.JSONDecodeError:
-                continue  # truncated last line of an interrupted run
+                continue
             if r["model"] == "mock" and not include_mock:
                 break
             meta = meta or {k: r[k] for k in ("dataset", "model", "condition")} | {"method": method_tag(r)}
+            ds_name = meta["dataset"]
+            if ds_name not in cat_maps:
+                cat_maps[ds_name] = _poi_to_cat(ds_name)
+                target_cats[ds_name] = _inst_target_cat(ds_name, sample)
             p = r["parse"]
+            tcat = target_cats[ds_name].get(r["instance_id"])
             rows[r["instance_id"]] = {
-                **score(p["ranked"], r["target"]),
+                **score(p["ranked"], r["target"], cat_maps[ds_name], tcat),
                 "invalid": float(p["invalid_answer"]), "copy": float(bool(p["copied_top1"])),
                 "copy_prompt": float(bool(p["copied_top1_prompt"])),
                 "is_revisit": bool(r["is_revisit"]), "target_in_prompt": bool(r["target_in_prompt"]),
@@ -81,12 +106,14 @@ def frequency_rows(dataset: str, sample: str) -> dict:
     """Member 2's frequency heuristic, scored like the LLM runs on the same instances."""
     ds = load_dataset(dataset)
     pop = GlobalPopularity(ds.train_trajectories())
+    poi_cat = _poi_to_cat(dataset)
     rows = {}
     for inst in ds.instances(sample):
         hist = ds.history(inst)
         ranked = frequency_baseline(inst, hist, pop, n=C.N_PREDICTIONS)
         inputs = {c["poi_id"] for t in hist for c in t["checkins"]} | {c["poi_id"] for c in inst["prefix"]}
-        rows[inst["instance_id"]] = {**score(ranked, inst["target"]["poi_id"]), "invalid": 0.0,
+        tcat = inst["target"]["category"]
+        rows[inst["instance_id"]] = {**score(ranked, inst["target"]["poi_id"], poi_cat, tcat), "invalid": 0.0,
                                      "copy": float(ranked[0] in inputs), "copy_prompt": float("nan"),
                                      "is_revisit": bool(inst["is_revisit"]), "target_in_prompt": None,
                                      "status": "heuristic", "seconds": None, "new_tokens": None}
@@ -112,7 +139,7 @@ def summarize(rows: dict, expected_n: int | None = None, n_boot: int = S.N_BOOT)
     for tag, flag in (("revisit", True), ("new", False)):
         sub = [v for v in vals if v["is_revisit"] == flag]
         out[tag] = {"n": len(sub), **{m: S.bootstrap_ci([v[m] for v in sub], n_boot)
-                                      for m in ("acc1", "acc5", "mrr")}}
+                                      for m in ("acc1", "acc5", "mrr", "cat_acc1", "cat_acc5")}}
     return out
 
 
@@ -209,26 +236,29 @@ def to_markdown(res: dict) -> str:
          "Copy = top-1 is a POI from the user's history or current trajectory. "
          "Invalid = no usable top-1 POI.", ""]
     L += ["## E1: heuristic floor", "",
-          "| Dataset | Method | Model | n | Acc@1 | Acc@5 | MRR | NDCG@5 | Copy | Invalid | Δ Acc@1 vs freq | p |",
-          "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+          "| Dataset | Method | Model | n | Acc@1 | Acc@5 | Cat-Acc@1 | Cat-Acc@5 | MRR | NDCG@5 | Copy | Invalid | Δ Acc@1 vs freq | p |",
+          "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for d, f in sorted(res["frequency"].items()):
         L.append(f"| {d} | frequency | - | {f['n']} | {_ci(f['acc1'])} | {_ci(f['acc5'])} | "
+                 f"{_ci(f['cat_acc1'])} | {_ci(f['cat_acc5'])} | "
                  f"{_ci(f['mrr'], False)} | {_ci(f['ndcg5'], False)} | {100 * f['copy']['mean']:.1f} | 0.0 | - | - |")
         for x in sorted((x for x in res["e1"] if x["dataset"] == d), key=lambda x: (x["model"], x["method"])):
             r, v = res["runs"][x["run"]], x["vs_frequency"]
             flag = "" if r["complete"] else " (incomplete)"
             L.append(f"| {d} | {x['method']} | {x['model']} | {r['n']}{flag} | {_ci(r['acc1'])} | {_ci(r['acc5'])} | "
+                     f"{_ci(r['cat_acc1'])} | {_ci(r['cat_acc5'])} | "
                      f"{_ci(r['mrr'], False)} | {_ci(r['ndcg5'], False)} | {100 * r['copy']['mean']:.1f} | "
                      f"{100 * r['invalid']['mean']:.1f} | {_diff(v['acc1'])} | {_p(v['mcnemar_acc1']['p_holm'])} |")
     L += ["", "## E2: revisit vs new targets (Acc@1)", "",
           "Revisit = the target POI appears in the user's history or current trajectory (fixed definition, "
           "docs/data_pipeline.md).", "",
-          "| Dataset | Method | Model | Subset | n | LLM Acc@1 | Freq Acc@1 | Δ vs freq | p |",
-          "|---|---|---|---|---|---|---|---|---|"]
+          "| Dataset | Method | Model | Subset | n | LLM Acc@1 | Freq Acc@1 | LLM Cat-Acc@1 | Freq Cat-Acc@1 | Δ vs freq | p |",
+          "|---|---|---|---|---|---|---|---|---|---|---|"]
     for x in sorted(res["e2"], key=lambda x: (x["dataset"], x["model"], x["method"], x["subset"] != "revisit")):
         r, f, v = res["runs"][x["run"]], res["frequency"][x["dataset"]], x["vs_frequency"]
         L.append(f"| {x['dataset']} | {x['method']} | {x['model']} | {x['subset']} | {r[x['subset']]['n']} | "
-                 f"{_ci(r[x['subset']]['acc1'])} | {_ci(f[x['subset']]['acc1'])} | {_diff(v['acc1'])} | "
+                 f"{_ci(r[x['subset']]['acc1'])} | {_ci(f[x['subset']]['acc1'])} | "
+                 f"{_ci(r[x['subset']]['cat_acc1'])} | {_ci(f[x['subset']]['cat_acc1'])} | {_diff(v['acc1'])} | "
                  f"{_p(v['mcnemar_acc1']['p_holm'])} |")
     if res["e3"]:
         L += ["", "## E3: venue-name test (Massive-STEPS)", "",

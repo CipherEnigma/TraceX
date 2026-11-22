@@ -41,3 +41,7 @@ def ndcg_at_k(ranked, relevant, k):
     dcg = sum(1 / math.log2(i + 1) for i, r in enumerate(ranked[:k], 1) if r in relevant)
     ideal = sum(1 / math.log2(i + 1) for i in range(1, min(len(relevant), k) + 1))
     return dcg / ideal if ideal else 0.0
+
+
+def category_accuracy_at_k(ranked_cats: list[str | None], target_cat: str, k: int) -> float:
+    return float(target_cat in [c for c in ranked_cats[:k] if c is not None])

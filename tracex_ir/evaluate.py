@@ -33,7 +33,8 @@ def evaluate(dataset, sample="sample_test_500", ks=(1, 3, 5), top_k=3, methods=M
     for m in methods:
         retr[m] = {f"{n}@{k}": [] for n in ("P", "R", "F1") for k in ks}
         retr[m].update({"MAP": [], "MRR": []})
-    pred = {name: {"acc1": [], "acc5": [], "mrr": [], "ndcg5": [], "revisit": []}
+    poi_cat = dict(zip(ds.pois["poi_id"], ds.pois["category"]))
+    pred = {name: {"acc1": [], "acc5": [], "mrr": [], "ndcg5": [], "cat_acc1": [], "cat_acc5": [], "revisit": []}
             for name in ["frequency", "plain_frequency"] + [f"{m}_vote" for m in methods]}
     n_rel = 0
     for inst in insts:
@@ -61,6 +62,9 @@ def evaluate(dataset, sample="sample_test_500", ks=(1, 3, 5), top_k=3, methods=M
             p["acc5"].append(M.accuracy_at_k(ranked, tgt, 5))
             p["mrr"].append(M.reciprocal_rank(ranked, {tgt}))
             p["ndcg5"].append(M.ndcg_at_k(ranked, {tgt}, 5))
+            cats = [poi_cat.get(x) for x in ranked]
+            p["cat_acc1"].append(M.category_accuracy_at_k(cats, inst["target"]["category"], 1))
+            p["cat_acc5"].append(M.category_accuracy_at_k(cats, inst["target"]["category"], 5))
             p["revisit"].append(bool(inst["is_revisit"]))
 
     def mean(x):
@@ -72,10 +76,10 @@ def evaluate(dataset, sample="sample_test_500", ks=(1, 3, 5), top_k=3, methods=M
         res["retrieval"][m] = {k: mean(v) for k, v in r.items()}
     for name, p in pred.items():
         rv = np.array(p["revisit"])
-        row = {k: mean(p[k]) for k in ("acc1", "acc5", "mrr", "ndcg5")}
+        row = {k: mean(p[k]) for k in ("acc1", "acc5", "mrr", "ndcg5", "cat_acc1", "cat_acc5")}
         for tag, mask in (("revisit", rv), ("new", ~rv)):
-            row[f"acc1_{tag}"] = mean(np.array(p["acc1"])[mask])
-            row[f"acc5_{tag}"] = mean(np.array(p["acc5"])[mask])
+            for k in ("acc1", "acc5", "cat_acc1", "cat_acc5"):
+                row[f"{k}_{tag}"] = mean(np.array(p[k])[mask])
         res["prediction"][name] = row
     return res
 
@@ -126,7 +130,7 @@ def main():
         for m, r in res["retrieval"].items():
             print(f"  {m:8s} " + " ".join(f"{k}={v:.3f}" for k, v in r.items()))
         for n, r in res["prediction"].items():
-            print(f"  {n:14s} acc1={r['acc1']:.3f} acc5={r['acc5']:.3f} mrr={r['mrr']:.3f} ndcg5={r['ndcg5']:.3f}")
+            print(f"  {n:14s} acc1={r['acc1']:.3f} acc5={r['acc5']:.3f} cat1={r['cat_acc1']:.3f} cat5={r['cat_acc5']:.3f} mrr={r['mrr']:.3f} ndcg5={r['ndcg5']:.3f}")
 
 
 if __name__ == "__main__":

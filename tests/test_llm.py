@@ -196,7 +196,10 @@ def test_holm_and_bootstrap():
 def test_score_and_compare():
     s = score([5, 9, 3], 3)
     assert s["acc1"] == 0 and s["acc5"] == 1 and s["mrr"] == pytest.approx(1 / 3)
-    row = lambda v: {"acc1": v, "acc5": v, "mrr": v, "ndcg5": v, "invalid": 0.0, "copy": 1.0,  # noqa: E731
+    s = score([5, 9, 3], 3, {5: "Bar", 9: "Gym", 3: "Cafe"}, "Gym")
+    assert s["cat_acc1"] == 0 and s["cat_acc5"] == 1
+    row = lambda v: {"acc1": v, "acc5": v, "mrr": v, "ndcg5": v, "cat_acc1": v, "cat_acc5": v,  # noqa: E731
+                     "invalid": 0.0, "copy": 1.0,
                      "copy_prompt": 1.0, "is_revisit": True, "target_in_prompt": True, "status": "json",
                      "seconds": 1.0, "new_tokens": 10}
     a = {f"i{k}": row(1.0) for k in range(10)}
