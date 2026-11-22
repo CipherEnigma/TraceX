@@ -138,3 +138,27 @@ def run_records(sample: str, sig: tuple) -> dict:
 def frequency_ranking(name: str, inst: dict) -> list[int]:
     d = dataset(name)
     return frequency_baseline(inst, d["ds"].history(inst), d["pop"], n=C.N_PREDICTIONS)
+
+
+# ---------------------------------------------------------------------------
+# Personal-assistant reports (Members 1 and 2; formats in docs/assistant_plan.md, section 8)
+# ---------------------------------------------------------------------------
+def _assist_dir():
+    from pathlib import Path
+    return Path(__file__).resolve().parent.parent / "reports" / "assistant"
+
+
+@st.cache_data(show_spinner=False)
+def _read_json(path: str, mtime: float) -> dict:
+    return json.loads(open(path, encoding="utf-8").read())
+
+
+def assistant_report(name: str) -> dict | None:
+    """reports/assistant/<name>.json, re-read when the file changes; None if it does not exist yet."""
+    p = _assist_dir() / f"{name}.json"
+    if not p.exists():
+        return None
+    try:
+        return _read_json(str(p), p.stat().st_mtime)
+    except (OSError, ValueError):
+        return None

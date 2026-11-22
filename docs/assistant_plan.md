@@ -38,17 +38,17 @@ role-playing one of the dataset's users.
             place index, nearby,          category prediction,            fallback, chat page, map,
             demo users                    explore, confidence             evidence panel
                      \                          |                               /
-                      \--------- tracex_assist/types.py (shared contract) -----/
+                      \--------- tracex_assist/contract.py (shared contract) -----/
             tracex_assist/analysis_copy.py   tracex_assist/evaluate.py      tracex_llm (no change)
             what does the LLM copy?          offline accuracy + LLM fusion
 ```
 
 Each member owns separate files, so the three branches merge without conflicts. **Nobody edits another member's
-files**; ask the owner instead. `types.py` is written first (step 0) and only changed by agreement.
+files**; ask the owner instead. `contract.py` is written first (step 0) and only changed by agreement.
 
 ---
 
-## 3. The shared contract: `tracex_assist/types.py` (step 0, everyone, 20 min)
+## 3. The shared contract: `tracex_assist/contract.py` (step 0, everyone, 20 min)
 
 ```python
 from dataclasses import dataclass, field
@@ -164,20 +164,20 @@ Each member has about 3.5 hours of own work plus shared steps. Times are targets
 | # | Task | Output | Time |
 |---|---|---|---|
 | 2.1 | Transition statistics with **back-off**: (you, this place, this weekday/time bucket) → (you, this place, any time) → (you, this category) → (everyone, this category). Record the level and counts used | `tracex_assist/evidence.py` | 60 min |
-| 2.2 | Habit ranking: fuse frequency, Markov (last place → next) and time-habit rankings with **reciprocal rank fusion (k = 60)**; each suggestion keeps its facts | `evidence.py` | 40 min |
+| 2.2 | Habit ranking: fuse the time-aware heuristic (`frequency_baseline`, merged in PR #4), Markov (last place → next) and time-habit rankings with **reciprocal rank fusion (k = 60)**; each suggestion keeps its facts | `evidence.py` | 40 min |
 | 2.3 | **Category prediction** (top 3 next categories with shares) and **explore** list: same category as the top predicted category, within 1 km of the current place (widen to 2 / 5 km if empty), never visited by the user, ranked by popularity | `evidence.py` | 40 min |
 | 2.4 | `confidence` and `thin` flag; `evidence_to_dict` | `evidence.py` | 15 min |
 | 2.5 | **Offline evaluation** on `sample_test_500` (NYC, TKY, Massive-STEPS) with the leakage rule: Acc@1/5, MRR, NDCG@5 for frequency, Markov, recency, the fused engine, plus **category-level Acc@1/5**; paired bootstrap + McNemar vs frequency, Holm-corrected. Also the post-hoc **LLM fusion** (saved LLM ranking fused with the engine), clearly labelled exploratory | `tracex_assist/evaluate.py` → `reports/assistant/results.{json,md}` | 60 min |
 | 2.6 | Tests: back-off picks the right level, shares add up, explore never returns a visited place, no target leakage | `tests/test_assist_evidence.py` | 20 min |
 
 **Done when:** `gather()` returns in under 0.5 s for a demo user; the results table exists; tests pass.
-Preliminary numbers already measured (Acc@1, NYC): frequency 21.8, Markov 24.2, LLM + frequency + Markov 25.6.
+Baseline to beat (Acc@1, after the time-aware heuristic was merged): NYC 28.6, TKY 20.8, MS Tokyo 12.3. Earlier quick check with the plain counter: Markov 24.2 and LLM + counter + Markov 25.6 on NYC, so re-measure everything against the new heuristic.
 
 ### Member 3 (Aayush): LLM layer, all UI changes, integration
 
 | # | Task | Output | Time |
 |---|---|---|---|
-| 3.1 | **Contract and stubs** (step 0): `types.py`, plus a stub `gather()` returning realistic fake `Evidence`, so the UI can be built before M1/M2 finish | `tracex_assist/types.py`, `tracex_assist/stub.py` | 20 min |
+| 3.1 | **Contract and stubs** (step 0): `contract.py`, plus a stub `gather()` returning realistic fake `Evidence`, so the UI can be built before M1/M2 finish | `tracex_assist/contract.py`, `tracex_assist/stub.py` | 20 min |
 | 3.2 | **Ollama client**: status check (server running, model present), streaming chat via `http://127.0.0.1:11434/api/chat`, timeout, model choice (`qwen2.5:3b` default, `qwen2.5:7b` optional) | `tracex_assist/llm.py` | 30 min |
 | 3.3 | **Grounded prompt**: system rules (use only the evidence, quote counts exactly, say when evidence is thin, offer "something new" only from the explore list) + the evidence JSON + the question | `llm.py` | 30 min |
 | 3.4 | **Answer validator**: every place ID / name and every percentage in the answer must appear in the evidence; one retry with a stricter prompt, else the template answer. **Template fallback** used when Ollama is off | `llm.py` | 40 min |
@@ -211,7 +211,7 @@ If behind at checkpoint 1, drop in this order: map → routine heatmap → LLM f
 
 1. Everyone starts from the branch with the latest merged code (`main` if `Aayush` is merged, otherwise `Aayush`).
 2. Branches: `assist-data` (M1), `assist-ir` (M2), `Aayush` (M3).
-3. Member 3 pushes `types.py` + stubs first; M1 and M2 pull it before starting.
+3. Member 3 pushes `contract.py` + stubs first; M1 and M2 pull it before starting.
 4. Commit small and often, one task per commit (e.g. `Add place index with nearby search (assistant 1.1)`).
 5. Merge order at the end: `assist-data` → `assist-ir` → `Aayush` → `main`, running `python -m pytest tests -q` after each.
 
@@ -227,3 +227,50 @@ If behind at checkpoint 1, drop in this order: map → routine heatmap → LLM f
 
 **Limits to state:** NYC has no venue names; Tokyo has thin histories; suggestions of new places are not
 evaluated for accuracy (they are popularity-based options, not predictions); the LLM fusion result is post hoc.
+
+---
+
+## 8. Report formats the dashboard reads (Members 1 and 2: write exactly these)
+
+All rates are fractions (0-1), like `reports/llm/evaluation.json`. A metric with a 95% bootstrap CI is
+`{"mean": 0.286, "lo": 0.246, "hi": 0.326, "n": 500}`; a paired difference is `{"diff": -0.044, "lo": -0.08, "hi": -0.01}`.
+The dashboard shows each section as soon as the file exists (E1 page and Runs & behaviour page) and a short note
+until then.
+
+**Member 2: `reports/assistant/results.json`** (from `python -m tracex_assist.evaluate`)
+
+```json
+{"sample": "sample_test_500",
+ "datasets": {
+  "nyc": {
+   "n": 500,
+   "methods": {
+    "frequency": {"label": "Time-aware heuristic", "acc1": {...}, "acc5": {...}, "mrr": {...}, "ndcg5": {...},
+                  "vs_frequency": null},
+    "markov":    {"label": "Markov (last place -> next)", "acc1": {...}, "acc5": {...}, "mrr": {...}, "ndcg5": {...},
+                  "vs_frequency": {"acc1": {"diff": ..., "lo": ..., "hi": ...}, "p_holm": 0.03}},
+    "recency":   {...},
+    "engine":    {"label": "Assistant engine (RRF)", ...},
+    "engine+qwen7b-llmmob": {"label": "Engine + Qwen-7B LLM-Mob (RRF)", "exploratory": true, ...}
+   },
+   "category": {"frequency": {"label": "Time-aware heuristic", "acc1": {...}, "acc5": {...}},
+                "engine":    {"label": "Assistant engine", "acc1": {...}, "acc5": {...}}}
+  },
+  "tky": {...}, "msteps_tokyo": {...}}}
+```
+
+Rows appear in the order written; `"exploratory": true` adds a *post hoc* tag. `confidence` in `Evidence` should use
+the `engine` row's Acc@1/Acc@5 for that dataset (`{"acc1": 0.29, "acc5": 0.61, "n": 500}`).
+
+**Member 1: `reports/assistant/copy_analysis.json`** (from `python -m tracex_assist.analysis_copy`)
+
+```json
+{"runs": [
+  {"dataset": "nyc", "model": "qwen7b", "method": "llmmob", "n": 500,
+   "same_as_frequency": 0.47, "same_as_markov": 0.39, "same_as_last_place": 0.12, "in_current_trip": 0.30}
+]}
+```
+
+One entry per saved LLM run (`method` is `llmmob` or `retrieval-jaccard`; Massive-STEPS uses the `present` names
+condition). Each share = fraction of instances whose LLM top-1 equals that rule's top-1. Put the "where the LLM beats
+the counter" breakdown in `copy_analysis.md` for the paper.
