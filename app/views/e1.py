@@ -105,9 +105,12 @@ def _engine_rows(rep: dict, dataset: str) -> tuple[list[tuple[str, dict, dict | 
         rows = [(k, m, m.get("vs_frequency"), bool(m.get("exploratory"))) for k, m in d.get("methods", {}).items()]
         return rows, "the time-aware heuristic"
     comps = {c["method"]: c for c in rep.get("comparisons", []) if c.get("dataset") == dataset}
-    rows = [(k, per[dataset], comps.get(k), k in EXPLORATORY) for k, per in rep.get("methods", {}).items()
-            if dataset in per]
-    return rows, ENGINE_LABELS.get(rep.get("comparator", "frequency"), "the visit counter").lower()
+    methods = rep.get("methods", {})
+    # comparisons are against "heuristic" when the report has that row (no explicit key needed), else "frequency"
+    comparator = rep.get("comparator") or ("heuristic" if "heuristic" in methods else "frequency")
+    rows = [(k, per[dataset], comps.get(k), k in EXPLORATORY) for k, per in methods.items()
+            if dataset in per and k != "heuristic"]  # the heuristic is already the first (E1 baseline) row
+    return rows, ENGINE_LABELS.get(comparator, "the visit counter").lower()
 
 
 def _engine_block(dataset: str, res: dict, sample: str):

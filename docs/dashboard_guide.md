@@ -251,7 +251,11 @@ ready (**● Qwen2.5-3B ready**) or the page is using template answers.
    visits at this time of week), each with its count ("12 of 36"), share bar and the data it is based on; the nearby
    places the user has never visited with distance and popularity; a warning if the evidence rests on fewer than 5
    visits; the engine's offline accuracy; and **exactly what the model was shown**.
-4. **Map:** you are here (orange), the user's usual places (blue) and suggested new places (green).
+4. **Map:** you are here (orange, always drawn on top), the user's usual places and the last answer's suggestions
+   (blue) and new places nearby (green). **Pick a place in the chips above the map, or click a point on the map**:
+   it gets a ring and a label, the map zooms to it, the matching chip lights up, and a card beside the map shows
+   what it is, how often this user went there, the distance from the current place, its popularity and why it was
+   suggested. Click the chip again to see all places. Chips are marked ● you are here, ★ suggested, + new.
 
 **How the answer is kept honest:** the evidence engine computes every place, count and distance from the user's
 history; the model only rewrites it. A validator rejects any answer that mentions a place, percentage, count or
@@ -259,8 +263,13 @@ distance that is not in the evidence (or puts a distance next to the wrong place
 retry, and after that the template answer is shown. In a test of 50 varied questions, 94% of answers passed on the
 first try, 98% after the retry, and 2% fell back to the template.
 
-**Good things to try in a demo:** a habit ("Where should I go next?"), something new ("Somewhere new to eat?"),
-Massive-STEPS Tokyo for real venue names, and a quiet time of week to see the thin-evidence warning.
+**Good things to try in a demo:** pick a ★ user and click **Load this routine**, then "Where should I go next?";
+something new ("Somewhere new to eat?"); Massive-STEPS Tokyo for real venue names; and a quiet time of week to see
+the thin-evidence warning.
+
+**When presenting a routine:** the banner's count (e.g. "11 of 12") is across all days, and the day and time it
+loads are just one example moment. The answer may quote a narrower, more specific count for that moment (e.g. "4 of
+4 on Friday mornings"). Both are correct: the engine uses the most specific evidence it has.
 
 **Data limits:** NYC and TKY have no venue names (places are shown as "Coffee Shop #345"); Massive-STEPS Tokyo has
 real names but short histories. Suggestions of new places are popularity-based options, not predictions.

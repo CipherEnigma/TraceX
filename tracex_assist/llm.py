@@ -17,7 +17,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 
-from .contract import WEEKDAYS, Evidence, time_bucket
+from .contract import WEEKDAYS, Evidence, category_matches, time_bucket
 
 OLLAMA_URL = os.environ.get("TRACEX_OLLAMA_URL", "http://127.0.0.1:11434")
 DEFAULT_MODEL = "qwen2.5:3b"
@@ -85,16 +85,27 @@ def _why(f) -> str:
         "similar_trip": f"it came next in {n} similar past trips ({p})",
         "category": f"{n} of your next stops were this kind of place ({p})",
     }.get(f.kind, f"{n} ({p})")
-    return f"{phrase} [based on: {f.level}]" if f.level else phrase
+    level = re.sub(r"^\s*you,\s*", "", f.level or "")  # "you, after this place, on Fri mornings" -> natural aside
+    return f"{phrase} ({level})" if level else phrase
 
 
 def wants_new(question: str) -> bool:
     return bool(NEW_WORDS.search(question or ""))
 
 
+# Phrases that say where the user IS or HAS BEEN ("just left the bar", "got off the train", "after the gym"):
+# they describe the current place, not the request, so they are removed before looking for a kind of place.
+_WHERE_I_AM = re.compile(
+    r"\b(?:just\s+)?(?:left|leaving|got\s+off|getting\s+off|off\s+of|came\s+(?:back\s+)?from|coming\s+(?:back\s+)?from|"
+    r"back\s+from|finished\s+at|done\s+at|after|at|from|out\s+of|in)\s+(?:the|a|an|my|this|that)?\s*"
+    r"[\w'&/-]+(?:\s+(?:station|shop|store|place|restaurant|bar|cafe|café|park|stop|house))?", re.I)
+
+
 def wanted_kind(question: str) -> str | None:
+    """The kind of place asked for, ignoring the place the user is at or coming from."""
+    request = _WHERE_I_AM.sub(" ", question or "")
     for kind, pat in KIND_WORDS:
-        if re.search(pat, question or "", re.I):
+        if re.search(pat, request, re.I):
             return kind
     return None
 
@@ -107,14 +118,19 @@ def parse_intent(question: str) -> dict:
 def evidence_view(ev: Evidence, places) -> dict:
     c = ev.context
     where = f", currently at {label(places, c.current_poi)}" if c.current_poi is not None else ""
+    # A requested kind ("where to eat?") narrows the user's known places to that kind; if none match, the
+    # answer falls back to new places of that kind (the explore list is already filtered by the engine).
+    habits = [s for s in ev.habits if category_matches(c.want_kind, places.get(s.poi_id).category)]
     view = {
         "situation": f"{WEEKDAYS[c.weekday]} {c.hour:02d}:00 ({time_bucket(c.hour)}){where}",
-        "likely_next": [{"place": label(places, s.poi_id), "why": [_why(f) for f in s.facts]} for s in ev.habits],
-        "likely_kind_of_place": [f"{cat}: {_pct(share)}" for cat, share in ev.categories],
+        "likely_next": [{"place": label(places, s.poi_id), "why": [_why(f) for f in s.facts]} for s in habits],
+        "likely_kind_of_place": [f"{cat}: {_pct(share)}" for cat, share in ev.categories
+                                 if category_matches(c.want_kind, cat)],
         # new places only when asked for (or nothing else to offer): keeps answers focused on the question
         "new_places": [{"place": label(places, e.poi_id), "distance": f"{e.km:.1f} km",
-                        "popularity": f"{e.popularity} check-ins by other people"} for e in ev.explore]
-        if (c.want_new or not ev.habits) else [],
+                        "popularity": f"{e.popularity} check-ins by other people"} for e in ev.explore
+                       if category_matches(c.want_kind, e.category)]
+        if (c.want_new or not habits) else [],
         "evidence_strength": "limited (few past visits)" if ev.thin else "good",
         "wants_something_new": bool(c.want_new),
     }
@@ -199,6 +215,17 @@ def validate(text: str, view: dict) -> list[str]:
     return problems
 
 
+_FILLER = re.compile(r"\b(you(?:'ll| will) (?:enjoy|love|like) it|enjoy (?:it|your)|great choice|good choice|"
+                     r"perfect (?:choice|spot)|highly recommend|have fun)\b", re.I)
+
+
+def strip_filler(text: str) -> str:
+    """Drop sentences that are only sales talk ("You will enjoy it."): rule 11, enforced in code for small models."""
+    parts = re.split(r"(?<=[.!?。])\s+", text.strip())
+    kept = [p for p in parts if not _FILLER.search(p)]
+    return " ".join(kept) if kept else text.strip()
+
+
 # ---------------------------------------------------------------------------
 # Template answer (Ollama off, or the model keeps breaking the rules)
 # ---------------------------------------------------------------------------
@@ -255,6 +282,7 @@ def answer(question: str, ev: Evidence, places, model: str = DEFAULT_MODEL, use_
             except (urllib.error.URLError, TimeoutError, OSError, KeyError, ValueError) as e:
                 problems.append(f"Ollama unavailable: {e}")
                 break
+            text = strip_filler(text)
             found = validate(text, view)
             if not found:
                 return Answer(text, "llm" if attempt == 1 else "llm-retry", model, time.perf_counter() - t0,
