@@ -26,7 +26,7 @@ if os.environ.get("TRACEX_RESULTS_DIR"):  # read results from elsewhere (demos, 
     C.RESULTS_DIR = Path(os.environ["TRACEX_RESULTS_DIR"]).resolve()
 
 import ui  # noqa: E402
-from views import assistant, e1, e2, e3, explorer, overview, runs  # noqa: E402
+from views import assistant, e1, e2, e3, explorer, overview, runs, slides  # noqa: E402
 
 st.set_page_config(page_title="TraceX", page_icon=":material/insights:", layout="wide",
                    initial_sidebar_state="expanded")
@@ -40,6 +40,7 @@ pg = st.navigation([
     st.Page(explorer.render, title="Instance explorer", icon=":material/search:", url_path="explorer"),
     st.Page(runs.render, title="Runs & behaviour", icon=":material/monitoring:", url_path="runs"),
     st.Page(assistant.render, title="Personal assistant", icon=":material/assistant:", url_path="assistant"),
+    st.Page(slides.render, title="Slides", icon=":material/slideshow:", url_path="slides"),
 ])
 
 import context  # noqa: E402

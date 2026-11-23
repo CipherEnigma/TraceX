@@ -83,8 +83,12 @@ def section(title: str, note: str = ""):
             f'<span class="tx-note">{note}</span></div>')
 
 
+def caption_html(text: str) -> str:
+    return f'<p class="tx-cap">{text}</p>'
+
+
 def caption(text: str):
-    st.html(f'<p class="tx-cap">{text}</p>')
+    st.html(caption_html(text))
 
 
 def segmented(label: str, options: dict, key: str, default=None):
